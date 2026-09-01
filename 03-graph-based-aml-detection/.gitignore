@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Datos sinteticos generados (se regeneran con data/synthetic_generator.py)
+data/synthetic/*
+!data/synthetic/matriz_od_bancos.csv
+!data/synthetic/.gitkeep
+
+# Artefactos del pipeline (se regeneran con `python -m src.pipeline`)
+outputs/*
+!outputs/figures/
+!outputs/figures/*.png
+!outputs/.gitkeep
+
+# Modelo de produccion (se regenera con `python -m src.pipeline`)
+models/*
+!models/.gitkeep
+
+.streamlit/secrets.toml
+
+CLAUDE.md
+.claude/

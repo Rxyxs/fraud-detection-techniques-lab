@@ -1,0 +1,101 @@
+banco_origen,banco_destino,n_transferencias,monto_total_clp
+Banco BICE,Banco BICE,394,109976987.0
+Banco BICE,Banco Consorcio,345,149930884.0
+Banco BICE,Banco Falabella,346,109954919.0
+Banco BICE,Banco Itau Chile,525,191305351.0
+Banco BICE,Banco Santander-Chile,394,112989902.0
+Banco BICE,Banco Security,290,92950316.0
+Banco BICE,Banco de Chile,373,130345055.0
+Banco BICE,Banco de Credito e Inversiones (BCI),637,230634979.0
+Banco BICE,BancoEstado,321,105373476.0
+Banco BICE,Scotiabank Chile,451,180819326.0
+Banco Consorcio,Banco BICE,369,137023776.0
+Banco Consorcio,Banco Consorcio,298,94658192.0
+Banco Consorcio,Banco Falabella,348,180334250.0
+Banco Consorcio,Banco Itau Chile,535,225579966.0
+Banco Consorcio,Banco Santander-Chile,350,141988421.0
+Banco Consorcio,Banco Security,287,117555124.0
+Banco Consorcio,Banco de Chile,333,144977772.0
+Banco Consorcio,Banco de Credito e Inversiones (BCI),495,167800303.0
+Banco Consorcio,BancoEstado,326,138474791.0
+Banco Consorcio,Scotiabank Chile,425,192380021.0
+Banco Falabella,Banco BICE,355,142774475.0
+Banco Falabella,Banco Consorcio,326,158062073.0
+Banco Falabella,Banco Falabella,339,95100142.0
+Banco Falabella,Banco Itau Chile,497,200401574.0
+Banco Falabella,Banco Santander-Chile,351,155958722.0
+Banco Falabella,Banco Security,263,198187232.0
+Banco Falabella,Banco de Chile,349,141323357.0
+Banco Falabella,Banco de Credito e Inversiones (BCI),517,183945015.0
+Banco Falabella,BancoEstado,298,126306546.0
+Banco Falabella,Scotiabank Chile,422,187692276.0
+Banco Itau Chile,Banco BICE,518,279919777.0
+Banco Itau Chile,Banco Consorcio,496,269402450.0
+Banco Itau Chile,Banco Falabella,488,265220825.0
+Banco Itau Chile,Banco Itau Chile,694,331649222.0
+Banco Itau Chile,Banco Santander-Chile,551,317178867.0
+Banco Itau Chile,Banco Security,448,349185584.0
+Banco Itau Chile,Banco de Chile,530,312806501.0
+Banco Itau Chile,Banco de Credito e Inversiones (BCI),738,464604165.0
+Banco Itau Chile,BancoEstado,475,264644116.0
+Banco Itau Chile,Scotiabank Chile,570,288847253.0
+Banco Santander-Chile,Banco BICE,404,142359641.0
+Banco Santander-Chile,Banco Consorcio,381,177561426.0
+Banco Santander-Chile,Banco Falabella,355,180714857.0
+Banco Santander-Chile,Banco Itau Chile,507,256996889.0
+Banco Santander-Chile,Banco Santander-Chile,381,195264547.0
+Banco Santander-Chile,Banco Security,313,108832349.0
+Banco Santander-Chile,Banco de Chile,390,184565059.0
+Banco Santander-Chile,Banco de Credito e Inversiones (BCI),613,295251887.0
+Banco Santander-Chile,BancoEstado,338,178668021.0
+Banco Santander-Chile,Scotiabank Chile,441,224785609.0
+Banco Security,Banco BICE,327,153267308.0
+Banco Security,Banco Consorcio,275,187647499.0
+Banco Security,Banco Falabella,303,142487196.0
+Banco Security,Banco Itau Chile,443,200176977.0
+Banco Security,Banco Santander-Chile,313,218900086.0
+Banco Security,Banco Security,228,143407962.0
+Banco Security,Banco de Chile,316,245732967.0
+Banco Security,Banco de Credito e Inversiones (BCI),461,230949445.0
+Banco Security,BancoEstado,287,198020365.0
+Banco Security,Scotiabank Chile,335,183798071.0
+Banco de Chile,Banco BICE,394,114793304.0
+Banco de Chile,Banco Consorcio,330,143793517.0
+Banco de Chile,Banco Falabella,372,164228933.0
+Banco de Chile,Banco Itau Chile,563,262694065.0
+Banco de Chile,Banco Santander-Chile,392,164364117.0
+Banco de Chile,Banco Security,329,141373738.0
+Banco de Chile,Banco de Chile,367,148757888.0
+Banco de Chile,Banco de Credito e Inversiones (BCI),586,196694513.0
+Banco de Chile,BancoEstado,325,120951714.0
+Banco de Chile,Scotiabank Chile,471,154279218.0
+Banco de Credito e Inversiones (BCI),Banco BICE,592,203314424.0
+Banco de Credito e Inversiones (BCI),Banco Consorcio,528,191029192.0
+Banco de Credito e Inversiones (BCI),Banco Falabella,509,221106435.0
+Banco de Credito e Inversiones (BCI),Banco Itau Chile,804,302306498.0
+Banco de Credito e Inversiones (BCI),Banco Santander-Chile,564,236662206.0
+Banco de Credito e Inversiones (BCI),Banco Security,489,257134357.0
+Banco de Credito e Inversiones (BCI),Banco de Chile,532,221691005.0
+Banco de Credito e Inversiones (BCI),Banco de Credito e Inversiones (BCI),891,329763445.0
+Banco de Credito e Inversiones (BCI),BancoEstado,521,229000740.0
+Banco de Credito e Inversiones (BCI),Scotiabank Chile,659,248200045.0
+BancoEstado,Banco BICE,374,149867574.0
+BancoEstado,Banco Consorcio,316,123546166.0
+BancoEstado,Banco Falabella,316,173127745.0
+BancoEstado,Banco Itau Chile,467,203706797.0
+BancoEstado,Banco Santander-Chile,343,137360659.0
+BancoEstado,Banco Security,290,181667446.0
+BancoEstado,Banco de Chile,349,182569539.0
+BancoEstado,Banco de Credito e Inversiones (BCI),495,169861371.0
+BancoEstado,BancoEstado,302,138373514.0
+BancoEstado,Scotiabank Chile,387,184831204.0
+Scotiabank Chile,Banco BICE,430,198545889.0
+Scotiabank Chile,Banco Consorcio,418,295628350.0
+Scotiabank Chile,Banco Falabella,425,144882855.0
+Scotiabank Chile,Banco Itau Chile,589,311129922.0
+Scotiabank Chile,Banco Santander-Chile,437,161576072.0
+Scotiabank Chile,Banco Security,349,165287793.0
+Scotiabank Chile,Banco de Chile,429,164706141.0
+Scotiabank Chile,Banco de Credito e Inversiones (BCI),666,231672060.0
+Scotiabank Chile,BancoEstado,438,197582940.0
+Scotiabank Chile,Scotiabank Chile,493,170066264.0

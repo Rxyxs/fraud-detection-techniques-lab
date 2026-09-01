@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Dataset real (~150 MB) - se descarga con data/download_dataset.py
+data/raw/*.csv
+!data/raw/.gitkeep
+
+# Artefactos del pipeline (se regeneran con `python -m src.pipeline`)
+outputs/models/*
+outputs/reports/*
+!outputs/models/.gitkeep
+!outputs/reports/.gitkeep
+!outputs/figures/*.png
+
+CLAUDE.md
+.claude/
