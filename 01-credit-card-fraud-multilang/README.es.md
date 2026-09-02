@@ -2,7 +2,7 @@
 
 # Cazando Fraude con Tarjetas de Crédito
 
-[![tests](https://github.com/Rxyxs/catching-credit-card-fraud/actions/workflows/tests.yml/badge.svg)](https://github.com/Rxyxs/catching-credit-card-fraud/actions/workflows/tests.yml)
+[![tests](https://github.com/Rxyxs/fraud-detection-techniques-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/Rxyxs/fraud-detection-techniques-lab/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.10-3776AB)](https://www.python.org/)
 [![CatBoost](https://img.shields.io/badge/ML-CatBoost%20%7C%20XGBoost-EB5E28)](https://catboost.ai/)
 [![imbalanced-learn](https://img.shields.io/badge/SMOTE-imbalanced--learn-8A5A2C)](https://imbalanced-learn.org/)
@@ -15,6 +15,16 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 Clasificación de fraude sobre **568.629 transacciones reales de tarjetas de crédito de 2023** — iterando desde un baseline de Regresión Logística + SMOTE hasta CatBoost/XGBoost y hasta una MLP en PyTorch entrenada con Focal Loss, validado para salud distribucional train/test, y calibrado con una matriz de costo de negocio en vez del umbral 0,5 por defecto.
+
+## Técnicas utilizadas
+
+- **Desbalance de clases**: sobremuestreo SMOTE (baseline), más CatBoost/XGBoost class-balanced.
+- **Iteración de modelos**: Regresión Logística → CatBoost → XGBoost → MLP en PyTorch con Focal Loss (ReLU/GELU/Swish comparadas).
+- **Afinamiento de hiperparámetros**: Optuna, búsqueda de 30 trials sobre XGBoost, optimizando PR-AUC en el test held-out.
+- **Chequeo de salud de la validación**: validación adversaria (clasificador train-vs-test) en vez de asumir un split limpio.
+- **Política de decisión**: calibración de umbral por matriz de costo en vez del corte 0,5 por defecto, más un barrido de sensibilidad en Julia sobre la razón de costo misma.
+- **Despliegue**: CatBoost exportado a ONNX; XGBoost reimplementado a mano en Rust puro para un path de scoring sin dependencias, benchmarkeado.
+- **Verificación entre lenguajes**: un GLM independiente en R cruza-verifica el baseline logístico de Python; vistas analíticas SQL cruzan-verifican las predicciones del modelo almacenadas.
 
 ## Datos y una divulgación honesta de alcance
 
@@ -57,6 +67,8 @@ flowchart TD
 
 Costo de negocio = 100 unidades por fraude no detectado (falso negativo) + 10 unidades por transacción legítima marcada por error (falso positivo) — ponderación ilustrativa pero realista para fraude de tarjetas de consumo.
 
+**[Gráfico interactivo: distribución de probabilidad de fraude predicha por XGBoost, test held-out real](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/01-credit-card-fraud-multilang/outputs/interactive/fraud_probability_distribution.html)** — histogramas de probabilidad predicha de ambas clases (eje y en escala logarítmica), con el umbral de decisión óptimo por costo marcado; zoom/pan/hover sobre las predicciones reales por transacción persistidas en `outputs/fraud.sqlite`.
+
 ### 4to enfoque: MLP en PyTorch con Focal Loss + comparación de activaciones
 
 Un enfoque complementario de deep learning (`src/deep.py`): una MLP pequeña (`64 -> 32 -> 1`, dropout 0,2) entrenada con [Focal Loss](https://arxiv.org/abs/1708.02002) (`alpha=0.25`, `gamma=2.0`) en vez de BCE plana — la familia de pérdida correcta para fraude, ya que reduce el peso de ejemplos fáciles/bien clasificados y concentra el gradiente en los difíciles, independiente de que este dataset en particular sea balanceado por clase. La misma arquitectura se entrena tres veces con **ReLU, GELU y Swish (SiLU)** sobre el mismo split de train/validación, así que la elección de activación se decide por el loss de validación medido por época (`outputs/reports/mlp_activation_history.csv`, `mlp_loss_curves.png`) en vez de asumirse — ReLU ganó en esta corrida. En este dataset casi linealmente separable, la MLP queda en el mismo nivel de ROC-AUC/PR-AUC que los ensambles de árboles pero con un costo de negocio calibrado más alto — reportado tal cual, no elegido a conveniencia, ya que una MLP pequeña no tiene ventaja estructural aquí sobre árboles con boosting sobre componentes PCA tabulares.
@@ -94,7 +106,9 @@ python -m src.sql_reports
 
 ### Rust — reimplementación en Rust puro del ensamble XGBoost de 726 árboles (`rust/scorer/`)
 
-Cuando el camino directo (cargar la exportación ONNX de CatBoost vía el crate `ort`) chocó con una incompatibilidad real del linker MSVC de Windows (símbolos vectorizados de C++20 sin resolver en el binario prebuilt de ONNX Runtime — un problema de toolchain documentado, no un bug de este proyecto), el plan B resultó más interesante que el original: exportar el modelo XGBoost afinado a JSON (`booster.save_model(...)`) y escribir a mano el traversal del ensamble de árboles en Rust — sin framework de ML, sin ONNX Runtime, solo indexación de arrays y una sigmoide. Verificado **bit a bit contra el `predict_proba` real de Python** sobre 2.000 transacciones reales: diferencia absoluta máxima **9×10⁻⁸** (ruido de punto flotante). Benchmark: **46.061 transacciones/segundo**, 21,7μs por transacción, single-threaded.
+Cuando el camino directo (cargar la exportación ONNX de CatBoost vía el crate `ort`) chocó con una incompatibilidad real del linker MSVC de Windows (símbolos vectorizados de C++20 sin resolver en el binario prebuilt de ONNX Runtime — un problema de toolchain documentado, no un bug de este proyecto), el plan B resultó más interesante que el original: exportar el modelo XGBoost afinado a JSON (`booster.save_model(...)`) y escribir a mano el traversal del ensamble de árboles en Rust — sin framework de ML, sin ONNX Runtime, solo indexación de arrays y una sigmoide. Verificado **bit a bit contra el `predict_proba` real de Python** sobre 2.000 transacciones reales: diferencia absoluta máxima **1,2×10⁻⁷** (ruido de punto flotante). Benchmark: **43.268 transacciones/segundo**, 23,1μs por transacción, single-threaded.
+
+**Un segundo bug real, encontrado y corregido armando esta verificación**: la primera version de este chequeo comparaba las predicciones de Rust contra las de Python sobre transacciones silenciosamente *distintas* -- Rust leia de forma independiente las primeras 2.000 filas del CSV crudo, mientras que las probabilidades de referencia de Python venian del split de test de `train_test_split(..., random_state=42)`, cuyo orden de filas no guarda relacion con el del archivo crudo (esa diferencia maxima daba `1.0` -- los dos lados estaban puntuando filas no relacionadas, no discrepando sobre las mismas). Corregido haciendo que `export_for_polyglot.py` tambien exporte las filas crudas reales del test set, en el orden del split de test, a `outputs/reports/rust_verification_rows.csv`, para que ambos lenguajes puntuen exactamente las mismas 2.000 transacciones.
 
 ```powershell
 python -m src.tune                    # genera outputs/models/xgboost_tuned.json

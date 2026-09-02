@@ -89,8 +89,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let ensemble = Ensemble::load("../../outputs/models/xgboost_tuned.json")?;
     println!("  {} arboles cargados, base_score={:.6}", ensemble.trees.len(), ensemble.base_score);
 
-    println!("[2/4] Cargando transacciones reales y aplicando el mismo feature engineering que Python...");
-    let rows = load_rows("../../data/raw/creditcard_2023.csv", 2000)?;
+    println!("[2/4] Cargando transacciones reales (mismas filas de test que Python) y aplicando el mismo feature engineering...");
+    let rows = load_rows("../../outputs/reports/rust_verification_rows.csv", 2000)?;
     println!("  {} filas reales cargadas", rows.len());
 
     println!("[3/4] Verificacion: comparando contra las probabilidades reales de Python (primeras 5 filas)...");

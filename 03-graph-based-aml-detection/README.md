@@ -36,6 +36,16 @@ command (`python -m src.pipeline`).
 > or pattern here represents actual activity by any institution or person.
 > See [§8 Regulatory disclaimer](#8-regulatory-disclaimer).
 
+## Techniques used
+
+- **Graph-theory features** (NetworkX): PageRank, betweenness centrality, clustering coefficient, strongly-connected-component size, pass-through ratio.
+- **Transactional features** (Polars): burst scores, near-threshold transfer counts, account age, off-hours activity ratio.
+- **Unsupervised ensembles** (PyOD): Isolation Forest + COPOD + ECOD, run at both account level and individual-transaction level.
+- **Model comparison baseline**: a statistical median/MAD z-score baseline and a PyTorch autoencoder (ReLU/GELU/Swish compared) benchmarked against the same PyOD ensemble.
+- **Explainability**: `shap.TreeExplainer` on the persisted production IsolationForest, served per transaction via the API.
+- **Temporal export**: a per-transfer `MultiDiGraph` (GraphML) and day-by-day network evolution table, so time-ordered structure isn't lost in a single aggregated snapshot.
+- **Serving**: FastAPI production API with SQLite-persisted analyst decisions; a Streamlit + PyVis interactive dashboard.
+
 ---
 
 # 2. Motivation
@@ -220,8 +230,8 @@ flowchart LR
 ## Installation and setup
 
 ```powershell
-git clone https://github.com/Rxyxs/chile-aml-anomaly-detection-engine.git
-cd chile-aml-anomaly-detection-engine
+git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/03-graph-based-aml-detection
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -287,7 +297,7 @@ pytest -v
 ## Project structure
 
 ```
-chile-aml-anomaly-detection-engine/
+03-graph-based-aml-detection/
 ├── data/
 │   ├── synthetic_generator.py       # TEF transfer + typology generator
 │   └── synthetic/                   # generated accounts/transfers (parquet, gitignored)
@@ -350,6 +360,8 @@ The ensemble score cleanly separates the bulk of normal accounts (left,
 blue) from injected AML-typology accounts (right, red), though the overlap
 in the middle is exactly what caps precision below 100% — a realistic
 outcome for an unsupervised model with no labels to fit against.
+
+**[Interactive chart: graph features by AML typology](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/03-graph-based-aml-detection/outputs/interactive/graph_features_scatter.html)** (`src/visualization/interactive_scatter.py`) — PageRank vs. pass-through ratio for all 2,000 accounts, colored by ground-truth typology (never used to fit the ensemble) and hoverable per account; zoom in on the low-PageRank, high-pass-through corner where bridge accounts and burst accounts cluster.
 
 Precision/recall trade-off across alert budgets (5 independent ensemble
 fits, one per budget):
@@ -565,10 +577,7 @@ compliance system. Specifically:
   hand-built rolling-window features.
 - Feed confirmed dispositions into a downstream supervised layer once
   enough labeled outcomes exist, treating the current unsupervised ensembles
-  as the first-pass filter, not the final word — see
-  [credit-fraud-autoencoder-detection-engine](https://github.com/Rxyxs/credit-fraud-autoencoder-detection-engine)
-  for a worked, quantified example of exactly that transition (unsupervised
-  autoencoder vs. supervised XGBoost on the same real, labeled dataset).
+  as the first-pass filter, not the final word.
 
 ---
 

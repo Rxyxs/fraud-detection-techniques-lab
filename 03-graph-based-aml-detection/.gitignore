@@ -13,6 +13,8 @@ data/synthetic/*
 outputs/*
 !outputs/figures/
 !outputs/figures/*.png
+!outputs/interactive/
+!outputs/interactive/*.html
 !outputs/.gitkeep
 
 # Modelo de produccion (se regenera con `python -m src.pipeline`)

@@ -43,6 +43,17 @@ def main() -> None:
     pd.DataFrame({"proba": proba_full[:RUST_VERIFICATION_ROWS]}).to_csv(
         REPORTS_DIR / "rust_verification_reference.csv", index=False
     )
+    # Las mismas RUST_VERIFICATION_ROWS filas del test set (V1-V28 + Amount,
+    # crudas, sin feature engineering) en el mismo orden que las probabilidades
+    # de arriba -- train_test_split(shuffle=True) reordena las filas respecto
+    # al CSV original, asi que Rust no puede simplemente leer las primeras N
+    # filas de creditcard_2023.csv: necesita las filas de test reales, en
+    # este orden, para que la verificacion bit-a-bit compare la misma
+    # transaccion en ambos lenguajes.
+    v_cols = [f"V{i}" for i in range(1, 29)]
+    test_df.iloc[:RUST_VERIFICATION_ROWS][v_cols + ["Amount"]].to_csv(
+        REPORTS_DIR / "rust_verification_rows.csv", index=False
+    )
 
     print(f"[3/3] Exportando predicciones completas del test set para Julia ({len(proba_full)} filas)...")
     pd.DataFrame({"proba": proba_full, "y_true": test_df["Class"].to_numpy()}).to_csv(

@@ -25,6 +25,16 @@ FastAPI validado a **< 50ms de latencia p95**, y un dashboard de monitoreo en
 Streamlit — todo entrenado y evaluado con un solo comando (`run_pipeline.py`),
 con cada número de este README tomado directamente de esa ejecución.
 
+## Técnicas utilizadas
+
+- **Ingeniería de atributos**: features de velocidad temporal y distancia geo (haversine) shifted/expanding sin fuga de datos (sin lookahead), z-scores de monto con winsorizing.
+- **Pre-filtro de anomalías**: Autoencoder en PyTorch (solo legítimas) que alimenta su error de reconstrucción a los modelos supervisados como un atributo más.
+- **Desbalance de clases**: SMOTE + Tomek Links solo en el split de train.
+- **Costo-sensibilidad**: pesos de entrenamiento escalados por monto en CLP, más un umbral de decisión afinado en validación que minimiza una función de costo explícita en CLP en vez de usar 0,5 por defecto.
+- **Tres enfoques de modelado comparados**: regresión logística interpretable, ensamble costo-sensible CatBoost/XGBoost (desplegado), y una MLP en PyTorch con Focal Loss (ReLU/GELU/Swish comparadas).
+- **Servicio**: endpoint de scoring en FastAPI validado bajo un presupuesto de latencia p95 de 50ms; dashboard en Streamlit para monitoreo en vivo.
+- **Persistencia**: DuckDB para métricas/predicciones comparativas entre ejecuciones.
+
 ---
 
 # 2. Motivación
@@ -235,6 +245,8 @@ autoencoder + inferencia CatBoost + XGBoost) — p50 **1,37ms**, p95
 ASGI — p95 **3,02ms**, máx **11,67ms**. Ambas cumplen holgadamente el
 presupuesto de 50ms.
 
+**[Gráfico interactivo: distribución de latencia, 200 solicitudes reales](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/02-realtime-ecommerce-fraud/outputs/interactive/latency_distribution.html)** (`src/visualization/interactive_latency.py`) — histogramas superpuestos de latencia solo-modelo vs. ida-y-vuelta HTTP completa, con la línea del presupuesto de 50ms marcada. Dependiente de la carga de la máquina como cualquier benchmark de reloj de pared: una corrida real independiente para este gráfico midió p95 8,48ms (solo modelo) / 11,20ms (extremo a extremo) — igual, holgadamente dentro de presupuesto; el número difiere de la tabla de arriba solo porque es otra corrida en una máquina compartida, no por un modelo distinto.
+
 ![Curva Precision-Recall](outputs/plots/precision_recall_curve.png)
 ![Matriz de Confusión](outputs/plots/confusion_matrix.png)
 ![Importancia de Atributos](outputs/plots/feature_importance.png)
@@ -301,7 +313,7 @@ Vista animada de la pérdida de validación avanzando época a época para cada 
 # 7. Estructura del Repositorio
 
 ```
-chile-financial-fraud-detection/
+02-realtime-ecommerce-fraud/
 ├── data/
 │   ├── raw/                    # transactions.parquet generado (en .gitignore, regenerar con run_pipeline.py)
 │   └── processed/              # features.parquet de ingenieria de atributos (en .gitignore)

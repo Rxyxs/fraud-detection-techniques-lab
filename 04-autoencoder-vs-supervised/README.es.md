@@ -33,13 +33,14 @@ una tarifa fija de revisión, los falsos negativos cuestan el monto real en
 dólares del fraude no detectado — en vez de un corte por percentil
 arbitrario.
 
-> Este es un proyecto complementario y contrastante a
-> [chile-aml-anomaly-detection-engine](https://github.com/Rxyxs/chile-aml-anomaly-detection-engine):
-> ese proyecto usa un grafo sintético donde las etiquetas confirmadas nunca
-> existen por diseño; este usa un dataset real y etiquetado
-> específicamente para medir *qué tan grande es realmente la brecha* entre
-> detectar anomalías a ciegas y detectarlas una vez que hay verdad
-> terreno disponible.
+## Técnicas utilizadas
+
+- **Detección de anomalías no supervisada, tres arquitecturas**: autoencoder estándar, Variational Autoencoder (pérdida ELBO), y Deep SVDD (pérdida de hiperesfera) — todos entrenados solo con transacciones normales, cero etiquetas de fraude.
+- **Gradient boosting supervisado**: XGBoost con `scale_pos_weight` manejando directamente el desbalance de 0,172%, sin sobremuestreo sintético.
+- **Híbrido**: XGBoost + el error de reconstrucción del autoencoder como atributo adicional — probado como un experimento real, reportado honestamente en cualquier caso.
+- **Explicabilidad**: `shap.TreeExplainer` sobre el modelo XGBoost ajustado.
+- **Evaluación bajo desbalance extremo**: PR-AUC y precisión/recall a presupuestos de alerta fijos, no solo ROC-AUC.
+- **Optimización de umbral sensible a costo**: el `Amount` real de la transacción como costo de falso negativo, una tarifa fija de revisión como costo de falso positivo.
 
 ---
 
@@ -297,8 +298,8 @@ detalle la optimización de umbral sensible a costos (ver §6).
 ## Instalación y configuración
 
 ```powershell
-git clone https://github.com/Rxyxs/credit-fraud-autoencoder-detection-engine.git
-cd credit-fraud-autoencoder-detection-engine
+git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/04-autoencoder-vs-supervised
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -347,7 +348,7 @@ pytest -v
 ## Estructura del repositorio
 
 ```
-credit-fraud-autoencoder-detection-engine/
+04-autoencoder-vs-supervised/
 ├── data/
 │   ├── download_dataset.py      # descarga reproducible desde OpenML (espejo ULB/Worldline)
 │   └── raw/                     # creditcard.csv (real, ~150 MB, en .gitignore)
@@ -404,6 +405,8 @@ estimado.
 | Híbrido (XGBoost + feature del autoencoder) | 0,969 | 0,829 |
 
 ![Comparación de modelos](outputs/figures/comparacion_modelos.png)
+
+**[Gráfico interactivo: curvas ROC y PR, los cinco modelos](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/04-autoencoder-vs-supervised/outputs/interactive/roc_pr_comparison.html)** (`src/visualization/interactive_roc_pr.py`) — Autoencoder, VAE, Deep SVDD, XGBoost e Híbrido superpuestos sobre el mismo test set held-out; acercar en las esquinas de FPR bajo / precisión alta donde se ve la separación real entre modelos.
 
 El ROC-AUC por sí solo sugeriría que el autoencoder es "casi tan bueno"
 (0,931 vs. 0,965) — exactamente la lectura engañosa que advierte la §3.3.
@@ -546,12 +549,6 @@ similarmente buena los fraudes más grandes.
 - **Combinar ambos no ayudó una vez que existen etiquetas** (§7.5) — un
   resultado negativo legítimo, reportado tal cual se encontró: las features
   crudas ya contienen lo que el score resumen del autoencoder agregaría.
-- **Este proyecto y
-  [chile-aml-anomaly-detection-engine](https://github.com/Rxyxs/chile-aml-anomaly-detection-engine)
-  son dos mitades honestas del mismo problema real**: ese proyecto muestra
-  cómo se ve la detección no supervisada cuando las etiquetas *nunca*
-  llegan (la realidad efectiva del LA); este muestra exactamente cuánto
-  mejoran las cosas en el momento en que sí llegan.
 - **El techo de PR-AUC de 0,242 del autoencoder estándar era una elección
   de modelado, no un límite duro para este conjunto de features**: Deep
   SVDD por sí solo eleva el PR-AUC no supervisado a 0,743 — aproximadamente

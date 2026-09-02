@@ -30,12 +30,14 @@ alerting decision by minimizing expected financial loss — false positives
 cost a fixed review fee, false negatives cost the real dollar amount of the
 missed fraud — rather than an arbitrary percentile cutoff.
 
-> This is a companion, contrasting project to
-> [chile-aml-anomaly-detection-engine](https://github.com/Rxyxs/chile-aml-anomaly-detection-engine):
-> that project uses a synthetic graph where confirmed labels never exist by
-> design; this one uses a real, labeled dataset specifically to measure
-> *how large the gap actually is* between detecting anomalies blind and
-> detecting them once ground truth is available.
+## Techniques used
+
+- **Unsupervised anomaly detection, three architectures**: standard autoencoder, Variational Autoencoder (ELBO loss), and Deep SVDD (hypersphere loss) — all trained on normal-only transactions, zero fraud labels.
+- **Supervised gradient boosting**: XGBoost with `scale_pos_weight` handling the 0.172% imbalance directly, no synthetic oversampling.
+- **Hybrid**: XGBoost + the autoencoder's reconstruction error as an added feature — tested as a real experiment, reported honestly either way.
+- **Explainability**: `shap.TreeExplainer` on the fitted XGBoost model.
+- **Evaluation under extreme imbalance**: PR-AUC and precision/recall at fixed alert budgets, not just ROC-AUC.
+- **Cost-sensitive threshold optimization**: real transaction `Amount` as the false-negative cost, a fixed review fee as the false-positive cost.
 
 ---
 
@@ -278,8 +280,8 @@ through the cost-sensitive threshold optimization in detail (see §6).
 ## Installation and setup
 
 ```powershell
-git clone https://github.com/Rxyxs/credit-fraud-autoencoder-detection-engine.git
-cd credit-fraud-autoencoder-detection-engine
+git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/04-autoencoder-vs-supervised
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -328,7 +330,7 @@ pytest -v
 ## Project structure
 
 ```
-credit-fraud-autoencoder-detection-engine/
+04-autoencoder-vs-supervised/
 ├── data/
 │   ├── download_dataset.py      # reproducible fetch from OpenML (ULB/Worldline mirror)
 │   └── raw/                     # creditcard.csv (real, ~150 MB, gitignored)
@@ -385,6 +387,8 @@ estimated.
 | Hybrid (XGBoost + autoencoder feature) | 0.969 | 0.829 |
 
 ![Model comparison](outputs/figures/comparacion_modelos.png)
+
+**[Interactive chart: ROC and PR curves, all five models](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/04-autoencoder-vs-supervised/outputs/interactive/roc_pr_comparison.html)** (`src/visualization/interactive_roc_pr.py`) — Autoencoder, VAE, Deep SVDD, XGBoost, and Hybrid overlaid on the identical held-out test set; zoom into the low-FPR / high-precision corners where the real separation between models is visible.
 
 ROC-AUC alone would suggest the autoencoder is "almost as good" (0.931 vs.
 0.965) — exactly the misleading read §3.3 warns about. PR-AUC tells the
@@ -517,12 +521,6 @@ distribution across models that all rank the top frauds similarly well.
 - **Combining both did not help once labels exist** (§7.5) — a legitimate,
   reported-as-found negative result: the raw features already contain what
   the autoencoder's summary score would add.
-- **This project and
-  [chile-aml-anomaly-detection-engine](https://github.com/Rxyxs/chile-aml-anomaly-detection-engine)
-  are two honest halves of the same real-world problem**: that project
-  shows what unsupervised detection looks like when labels *never* arrive
-  (the actual AML reality); this one shows exactly how much better things
-  get the moment they do.
 - **The 0.242 PR-AUC ceiling from the standard autoencoder was a modeling
   choice, not a hard limit for this feature set**: Deep SVDD alone lifts
   unsupervised PR-AUC to 0.743 — roughly 3x — just by changing the training

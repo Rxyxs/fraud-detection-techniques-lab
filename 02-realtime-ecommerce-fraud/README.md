@@ -25,6 +25,16 @@ monitoring dashboard — all trained and evaluated by a single command
 (`run_pipeline.py`), with every number in this README taken directly from
 that run.
 
+## Techniques used
+
+- **Feature engineering**: leakage-safe, shifted/expanding time-velocity and haversine geo-distance features (no lookahead), amount z-scores with winsorizing.
+- **Anomaly pre-filter**: PyTorch autoencoder (legit-only) feeding its reconstruction error into the supervised models as one more feature.
+- **Class imbalance**: SMOTE + Tomek Links on the train split only.
+- **Cost-sensitivity**: CLP-amount-scaled training weights, plus a validation-tuned decision threshold that minimizes an explicit CLP cost function instead of defaulting to 0.5.
+- **Three compared modeling approaches**: interpretable logistic regression, cost-sensitive CatBoost/XGBoost ensemble (deployed), and a PyTorch MLP with Focal Loss (ReLU/GELU/Swish compared).
+- **Serving**: FastAPI scoring endpoint validated under a 50ms p95 latency budget; a Streamlit dashboard for live monitoring.
+- **Persistence**: DuckDB for cross-run comparative metrics/predictions.
+
 ---
 
 # 2. Motivation
@@ -222,6 +232,8 @@ CatBoost + XGBoost inference) — p50 **1.37ms**, p95 **1.59ms**, max
 **5.35ms**. Full HTTP round-trip through the ASGI stack — p95 **3.02ms**, max
 **11.67ms**. Both comfortably clear the 50ms budget.
 
+**[Interactive chart: latency distribution, 200 real requests](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/02-realtime-ecommerce-fraud/outputs/interactive/latency_distribution.html)** (`src/visualization/interactive_latency.py`) — overlaid histograms of model-only vs. full-HTTP-round-trip latency with the 50ms budget line marked. Machine-load-dependent like any wall-clock benchmark: a separate real run for this chart measured p95 8.48ms (model-only) / 11.20ms (end-to-end) — still well inside budget, a different number from the table above only because it's a different run on a shared machine, not a different model.
+
 ![Precision-Recall Curve](outputs/plots/precision_recall_curve.png)
 ![Confusion Matrix](outputs/plots/confusion_matrix.png)
 ![Feature Importance](outputs/plots/feature_importance.png)
@@ -284,7 +296,7 @@ Animated view of validation loss racing across epochs for each activation:
 # 7. Repository Structure
 
 ```
-chile-financial-fraud-detection/
+02-realtime-ecommerce-fraud/
 ├── data/
 │   ├── raw/                    # generated transactions.parquet (gitignored, regenerate with run_pipeline.py)
 │   └── processed/              # engineered features.parquet (gitignored)

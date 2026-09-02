@@ -38,6 +38,16 @@ punta con un solo comando (`python -m src.pipeline`).
 > real de alguna institución o persona. Ver
 > [§8 Aviso regulatorio](#8-aviso-regulatorio).
 
+## Técnicas utilizadas
+
+- **Features de teoría de grafos** (NetworkX): PageRank, centralidad de intermediación, coeficiente de agrupamiento, tamaño de componente fuertemente conexa, ratio de paso.
+- **Features transaccionales** (Polars): burst scores, conteo de transferencias cerca del umbral, antigüedad de cuenta, ratio de actividad fuera de horario.
+- **Ensambles no supervisados** (PyOD): Isolation Forest + COPOD + ECOD, corridos tanto a nivel cuenta como a nivel transacción individual.
+- **Baseline de comparación de modelos**: un baseline estadístico de z-score mediana/MAD y un autoencoder en PyTorch (ReLU/GELU/Swish comparadas) evaluados contra el mismo ensamble PyOD.
+- **Explicabilidad**: `shap.TreeExplainer` sobre el IsolationForest de producción persistido, servido por transacción vía la API.
+- **Exportación temporal**: un `MultiDiGraph` por transferencia (GraphML) y una tabla de evolución diaria de la red, para no perder la estructura temporal en una sola foto agregada.
+- **Servicio**: API de producción en FastAPI con decisiones de analista persistidas en SQLite; dashboard interactivo en Streamlit + PyVis.
+
 ---
 
 # 2. Motivación y Problema de Negocio
@@ -236,8 +246,8 @@ flowchart LR
 ## Instalación y configuración
 
 ```powershell
-git clone https://github.com/Rxyxs/chile-aml-anomaly-detection-engine.git
-cd chile-aml-anomaly-detection-engine
+git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/03-graph-based-aml-detection
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -303,7 +313,7 @@ pytest -v
 ## Estructura del repositorio
 
 ```
-chile-aml-anomaly-detection-engine/
+03-graph-based-aml-detection/
 ├── data/
 │   ├── synthetic_generator.py       # generador de transferencias TEF + tipologias
 │   └── synthetic/                   # cuentas/transferencias generadas (parquet, en .gitignore)
@@ -367,6 +377,8 @@ normales (izquierda, azul) de las cuentas con tipología AML inyectada
 (derecha, rojo), aunque el traslape en la zona media es justamente lo que
 limita la precisión por debajo del 100% — un resultado realista para un
 modelo no supervisado que no tiene etiquetas contra las cuales ajustarse.
+
+**[Gráfico interactivo: features de grafo por tipología AML](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/03-graph-based-aml-detection/outputs/interactive/graph_features_scatter.html)** (`src/visualization/interactive_scatter.py`) — PageRank vs. ratio de paso para las 2.000 cuentas, coloreadas por tipología real (nunca usada para ajustar el ensamble) y con hover por cuenta; acercar en la esquina de PageRank bajo y ratio de paso alto donde se agrupan las cuentas puente y de ráfaga.
 
 Trade-off precisión/recall entre distintos presupuestos de alerta (5
 ajustes independientes del ensamble, uno por presupuesto):
@@ -598,11 +610,7 @@ cumplimiento AML en producción. Específicamente:
 - Alimentar las disposiciones confirmadas a una capa supervisada posterior
   una vez que existan suficientes resultados etiquetados, tratando a los
   ensambles no supervisados actuales como el filtro de primera pasada, no
-  como la palabra final — ver
-  [credit-fraud-autoencoder-detection-engine](https://github.com/Rxyxs/credit-fraud-autoencoder-detection-engine)
-  para un ejemplo concreto y cuantificado de exactamente esa transición
-  (autoencoder no supervisado vs. XGBoost supervisado sobre el mismo
-  dataset real y etiquetado).
+  como la palabra final.
 
 ---
 
