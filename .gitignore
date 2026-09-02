@@ -4,3 +4,9 @@ venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Interactive Plotly dashboards: each embeds the full Plotly.js bundle inline
+# (~4-5MB per file), which was making GitHub misdetect the repo's primary
+# language as HTML instead of the real Python code. Regenerate locally from
+# each module's source script.
+**/outputs/interactive/
