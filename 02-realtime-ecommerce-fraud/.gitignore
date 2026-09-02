@@ -29,6 +29,3 @@ catboost_info/
 .vscode/
 .idea/
 .DS_Store
-
-CLAUDE.md
-.claude/

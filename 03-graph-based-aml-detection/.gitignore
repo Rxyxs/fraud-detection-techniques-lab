@@ -22,6 +22,3 @@ models/*
 !models/.gitkeep
 
 .streamlit/secrets.toml
-
-CLAUDE.md
-.claude/
