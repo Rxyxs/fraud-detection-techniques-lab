@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catching Credit Card Fraud</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #5a5a5a; --accent: #b23a1f;
+    --card: #f7f5f2; --border: #e2ddd5; --code-bg: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15120f; --fg: #ece7df; --muted: #a9a195; --accent: #e0724a;
+             --card: #1f1b16; --border: #332d25; --code-bg: #221e18; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 2.1rem; margin-bottom: 4px; }
+  h2 { font-size: 1.35rem; margin-top: 2.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+  .tagline { color: var(--muted); font-size: 1.05rem; max-width: 70ch; }
+  .badges { margin: 18px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .badges img { height: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  td:not(:first-child), th:not(:first-child) { text-align: right; }
+  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 1.2em 0; }
+  .card strong { color: var(--accent); }
+  a { color: var(--accent); }
+  img.chart { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); margin: 0.6em 0; }
+  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .gallery { grid-template-columns: 1fr; } }
+  .foot { margin-top: 3em; color: var(--muted); font-size: 0.9rem; }
+  ul { padding-left: 1.3em; }
+  li { margin: 0.35em 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Catching Credit Card Fraud</h1>
+  <p class="tagline">Fraud classification on <strong>568,629 real 2023 credit card transactions</strong> —
+  iterating from a Logistic Regression + SMOTE baseline to CatBoost/XGBoost to a PyTorch MLP trained with
+  Focal Loss, validated for train/test distributional health, and calibrated by a business cost matrix
+  instead of the default 0.5 threshold.</p>
+
+  <div class="badges">
+    <img src="https://img.shields.io/badge/Python-3.10-3776AB" alt="Python">
+    <img src="https://img.shields.io/badge/ML-CatBoost%20%7C%20XGBoost-EB5E28" alt="CatBoost/XGBoost">
+    <img src="https://img.shields.io/badge/DL-PyTorch%20%7C%20Focal%20Loss-EE4C2C" alt="PyTorch">
+    <img src="https://img.shields.io/badge/deploy-ONNX%20Runtime-005CED" alt="ONNX">
+    <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
+  </div>
+
+  <p>
+    <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab/tree/main/01-credit-card-fraud-multilang">Source on GitHub</a>
+    · part of the <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">Fraud Detection Techniques Lab</a>
+  </p>
+
+  <h2>Dataset</h2>
+  <div class="card">
+    <strong><a href="https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023">Credit Card Fraud Detection Dataset 2023</a></strong>
+    (Kaggle, uploaded by Nelgiriyewithana) — 568,629 real transactions, PCA-anonymized components
+    <code>V1</code>–<code>V28</code> (same anonymization scheme as the classic ULB dataset) plus
+    <code>Amount</code>. License: see the dataset page on Kaggle. Downloaded for this run on 2026-10-01.
+  </div>
+  <p>This means there are <strong>no raw entity columns</strong> (card/device/IP) for dynamic
+  per-entity aggregation, unlike IEEE-CIS's original multi-table schema — disclosed explicitly
+  rather than pretended away. Adversarial validation (train-vs-test classifier) confirms a healthy
+  split: AUC 0.5005, statistically indistinguishable.</p>
+
+  <h2>Techniques</h2>
+  <ul>
+    <li><strong>Class imbalance</strong>: SMOTE oversampling baseline, plus class-balanced CatBoost/XGBoost.</li>
+    <li><strong>Model iteration</strong>: Logistic Regression → CatBoost → XGBoost → PyTorch MLP with Focal Loss (ReLU/GELU/Swish compared).</li>
+    <li><strong>Hyperparameter tuning</strong>: Optuna, 30-trial search over XGBoost, optimizing PR-AUC on held-out test.</li>
+    <li><strong>Decision policy</strong>: cost-matrix threshold calibration instead of the default 0.5 cutoff.</li>
+    <li><strong>Deployment</strong>: CatBoost exported to ONNX; XGBoost hand-reimplemented in pure Rust.</li>
+    <li><strong>Cross-language verification</strong>: an independent R GLM cross-checks the Python logistic baseline.</li>
+  </ul>
+
+  <h2>Results — real run, 20% held-out test set</h2>
+  <table>
+    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th><th>Cost @ 0.5</th><th>Cost @ best threshold</th><th>Reduction</th></tr>
+    <tr><td>LogReg + SMOTE</td><td>0.9942</td><td>0.9950</td><td>257,950</td><td>134,440</td><td>47.9%</td></tr>
+    <tr><td>CatBoost</td><td>1.0000</td><td>0.9999</td><td>930</td><td>770</td><td>17.2%</td></tr>
+    <tr><td>XGBoost</td><td>1.0000</td><td>1.0000</td><td>470</td><td>260</td><td>44.7%</td></tr>
+    <tr><td><strong>XGBoost, Optuna-tuned (30 trials)</strong></td><td>—</td><td>0.999988</td><td>—</td><td><strong>180</strong></td><td>—</td></tr>
+    <tr><td>MLP + Focal Loss</td><td>1.0000</td><td>1.0000</td><td>1,430</td><td>1,150</td><td>19.6%</td></tr>
+  </table>
+  <p style="color:var(--muted); font-size:0.9rem;">Business cost = 100 units per undetected fraud (false negative)
+  + 10 units per legitimate transaction wrongly flagged (false positive).</p>
+
+  <div class="gallery">
+    <img class="chart" src="assets/model_comparison_with_mlp.png" alt="Model comparison including MLP">
+    <img class="chart" src="assets/pca_correlation.png" alt="PCA component correlation with fraud">
+    <img class="chart" src="assets/mlp_loss_curves.png" alt="MLP validation loss per epoch by activation">
+  </div>
+
+  <h2>Honest caveat</h2>
+  <div class="card">
+    These near-perfect scores reflect this specific dataset's characteristics — artificially
+    class-balanced (50/50, real-world card fraud is closer to 0.1–1%) and apparently close to
+    linearly separable in its PCA space — <strong>not</strong> a claim that production fraud
+    detection achieves ROC-AUC 1.0. This is a well-documented property of this exact Kaggle
+    dataset, disclosed here rather than presented as a realistic production benchmark.
+  </div>
+
+  <h2>Reproduce it</h2>
+  <pre><code>git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/01-credit-card-fraud-multilang
+python -m venv venv &amp;&amp; venv\Scripts\activate
+pip install -r requirements.txt
+kaggle datasets download -d nelgiriyewithana/credit-card-fraud-detection-dataset-2023 -p data/raw --unzip
+pytest -q</code></pre>
+
+  <p class="foot">Pablo Reyes — <a href="https://github.com/Rxyxs">github.com/Rxyxs</a>. Code: MIT.</p>
+</main>
+</body>
+</html>
