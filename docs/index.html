@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Catching Credit Card Fraud</title>
+<title>Fraud Detection Techniques Lab</title>
 <style>
   :root {
     --bg: #ffffff; --fg: #1a1a1a; --muted: #5a5a5a; --accent: #b23a1f;
@@ -39,11 +39,27 @@
   .foot { margin-top: 3em; color: var(--muted); font-size: 0.9rem; }
   ul { padding-left: 1.3em; }
   li { margin: 0.35em 0; }
+  .index-nav { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+               padding: 14px 20px; margin: 1.5em 0; }
+  .index-nav a { font-weight: 600; }
+  .project { margin-top: 4em; padding-top: 2em; border-top: 2px solid var(--border); }
 </style>
 </head>
 <body>
 <main>
-  <h1>Catching Credit Card Fraud</h1>
+  <h1>Fraud Detection Techniques Lab</h1>
+  <p class="tagline">Two real-dataset approaches to credit card fraud, from the same lab: a
+  supervised model-iteration benchmark, and an unsupervised-vs-supervised comparison that
+  quantifies exactly what confirmed fraud labels are worth.</p>
+
+  <div class="index-nav">
+    <a href="#fraud-2023">① Catching Credit Card Fraud</a> (2023 dataset, supervised iteration)
+    &nbsp;·&nbsp;
+    <a href="#ae-vs-xgboost">② Autoencoder vs. Supervised XGBoost</a> (ULB dataset, label-value quantified)
+  </div>
+
+  <div class="project" id="fraud-2023" style="border-top:none; margin-top:1em; padding-top:0;">
+  <h1>① Catching Credit Card Fraud</h1>
   <p class="tagline">Fraud classification on <strong>568,629 real 2023 credit card transactions</strong> —
   iterating from a Logistic Regression + SMOTE baseline to CatBoost/XGBoost to a PyTorch MLP trained with
   Focal Loss, validated for train/test distributional health, and calibrated by a business cost matrix
@@ -118,6 +134,99 @@ python -m venv venv &amp;&amp; venv\Scripts\activate
 pip install -r requirements.txt
 kaggle datasets download -d nelgiriyewithana/credit-card-fraud-detection-dataset-2023 -p data/raw --unzip
 pytest -q</code></pre>
+
+  </div>
+
+  <div class="project" id="ae-vs-xgboost">
+  <h1>② Deep Autoencoder vs. Supervised XGBoost</h1>
+  <p class="tagline">A quantified answer to a question every fraud/AML team eventually asks:
+  <em>"how much are we losing by not having confirmed labels yet?"</em> Three unsupervised PyTorch
+  architectures (Autoencoder, VAE, Deep SVDD) trained on <strong>only legitimate transactions</strong>
+  — the realistic day-one scenario — benchmarked against a supervised XGBoost trained once fraud
+  confirmations exist, on the real <strong>ULB/Worldline</strong> dataset (284,807 transactions,
+  492 confirmed frauds). A cost-sensitive threshold optimizer turns each model's raw score into an
+  actual alerting decision.</p>
+
+  <div class="badges">
+    <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C" alt="PyTorch">
+    <img src="https://img.shields.io/badge/XGBoost-2.0-337AB7" alt="XGBoost">
+    <img src="https://img.shields.io/badge/SHAP-0.4x-8A2BE2" alt="SHAP">
+    <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
+  </div>
+
+  <p>
+    <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab/tree/main/04-autoencoder-vs-supervised">Source on GitHub</a>
+    · part of the <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">Fraud Detection Techniques Lab</a>
+  </p>
+
+  <h2>Dataset</h2>
+  <div class="card">
+    <strong><a href="https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud">Credit Card Fraud Detection</a></strong>
+    (Kaggle, ULB Machine Learning Group / Pozzolo et al., mirrored via
+    <a href="https://www.openml.org/d/1597">OpenML dataset 1597</a>) — 284,807 European
+    cardholder transactions, September 2013, 492 confirmed frauds (0.172%). PCA components
+    <code>V1</code>–<code>V28</code>; <code>Time</code>/<code>Amount</code> untransformed.
+    Downloaded for this run on 2026-10-01 (exact row count verified: 284,807).
+  </div>
+
+  <h2>Headline comparison — real held-out test set</h2>
+  <table>
+    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
+    <tr><td>Autoencoder (unsupervised, zero labels used)</td><td>0.931</td><td>0.242</td></tr>
+    <tr><td><strong>XGBoost (supervised, real labels)</strong></td><td><strong>0.965</strong></td><td><strong>0.834</strong></td></tr>
+    <tr><td>Hybrid (XGBoost + autoencoder feature)</td><td>0.969</td><td>0.829</td></tr>
+  </table>
+  <p>ROC-AUC alone suggests the autoencoder is "almost as good" (0.931 vs. 0.965). PR-AUC tells
+  the real story: going from zero labels to real confirmed labels is a <strong>3.4x jump in
+  average precision</strong> (0.242 → 0.834).</p>
+  <img class="chart" src="assets/comparacion_modelos.png" alt="Model comparison">
+
+  <h2>AE vs. VAE vs. Deep SVDD — same protocol, different objective</h2>
+  <table>
+    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
+    <tr><td>Autoencoder (standard)</td><td>0.931</td><td>0.242</td></tr>
+    <tr><td>VAE</td><td>0.947</td><td>0.515</td></tr>
+    <tr><td><strong>Deep SVDD</strong></td><td>0.946</td><td><strong>0.743</strong></td></tr>
+  </table>
+  <p><strong>Deep SVDD's PR-AUC (0.743) is roughly 3x the standard autoencoder's (0.242)</strong> and
+  approaches XGBoost's supervised 0.834 — without ever seeing a fraud label. Dropping reconstruction
+  entirely and concentrating normal transactions into a hypersphere separates this dataset's fraud
+  pattern substantially better than learning to reconstruct it.</p>
+  <div class="gallery">
+    <img class="chart" src="assets/ae_vae_svdd_precision_recall.png" alt="AE vs VAE vs Deep SVDD precision-recall">
+    <img class="chart" src="assets/ae_vae_svdd_score_distributions.png" alt="AE vs VAE vs Deep SVDD score distributions">
+  </div>
+
+  <h2>Cost-sensitive threshold optimization — real financial impact</h2>
+  <table>
+    <tr><th>Model</th><th>Alerts</th><th>TP/FP/FN</th><th>Total cost</th><th>Reduction</th></tr>
+    <tr><td>Autoencoder</td><td>286</td><td>47/239/27</td><td>$5,731.99</td><td>32.4%</td></tr>
+    <tr><td>VAE</td><td>143</td><td>55/88/19</td><td>$4,683.26</td><td>44.8%</td></tr>
+    <tr><td>Deep SVDD</td><td>143</td><td>58/85/16</td><td>$4,808.88</td><td>43.3%</td></tr>
+    <tr><td><strong>XGBoost</strong></td><td>143</td><td>63/80/11</td><td>$4,636.08</td><td><strong>45.4%</strong></td></tr>
+  </table>
+  <p style="color:var(--muted); font-size:0.9rem;">Cost matrix: fixed $5 per false-positive review;
+  false-negative cost = the real dollar amount of that missed fraud. Baseline (no model): $8,483.36
+  total fraud on 74 confirmed test-set frauds.</p>
+  <img class="chart" src="assets/ae_vae_svdd_cost_curves.png" alt="Cost vs alert budget">
+
+  <h2>Honest caveat — a negative result, reported as found</h2>
+  <div class="card">
+    Adding the autoencoder's reconstruction error as an extra XGBoost feature moved ROC-AUC up
+    marginally (0.965 → 0.969) but <strong>PR-AUC down slightly</strong> (0.834 → 0.829) — a wash,
+    not an improvement. XGBoost, given the raw 30 PCA features directly, already extracts whatever
+    signal the autoencoder's single reconstruction-error number summarizes. Reported as a negative
+    result on purpose, rather than quietly dropped because it didn't confirm the hoped-for story.
+  </div>
+
+  <h2>Reproduce it</h2>
+  <pre><code>git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
+cd fraud-detection-techniques-lab/04-autoencoder-vs-supervised
+python -m venv venv &amp;&amp; venv\Scripts\activate
+pip install -r requirements.txt
+python data/download_dataset.py
+pytest -q</code></pre>
+  </div>
 
   <p class="foot">Pablo Reyes — <a href="https://github.com/Rxyxs">github.com/Rxyxs</a>. Code: MIT.</p>
 </main>
