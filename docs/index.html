@@ -4,231 +4,63 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fraud Detection Techniques Lab</title>
+<meta name="description" content="Four fraud/AML detection approaches in one lab, each isolating a different technique on a different data profile — real-world card fraud, real-time e-commerce, interbank AML typolo">
 <style>
-  :root {
-    --bg: #ffffff; --fg: #1a1a1a; --muted: #5a5a5a; --accent: #b23a1f;
-    --card: #f7f5f2; --border: #e2ddd5; --code-bg: #f1efe9;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #15120f; --fg: #ece7df; --muted: #a9a195; --accent: #e0724a;
-             --card: #1f1b16; --border: #332d25; --code-bg: #221e18; }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--fg);
-    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.6;
-  }
-  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
-  h1 { font-size: 2.1rem; margin-bottom: 4px; }
-  h2 { font-size: 1.35rem; margin-top: 2.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
-  .tagline { color: var(--muted); font-size: 1.05rem; max-width: 70ch; }
-  .badges { margin: 18px 0; display: flex; flex-wrap: wrap; gap: 6px; }
-  .badges img { height: 20px; }
-  table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.92rem; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; }
-  td:not(:first-child), th:not(:first-child) { text-align: right; }
-  code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin: 1.2em 0; }
-  .card strong { color: var(--accent); }
-  a { color: var(--accent); }
-  img.chart { max-width: 100%; border-radius: 8px; border: 1px solid var(--border); margin: 0.6em 0; }
-  .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 640px) { .gallery { grid-template-columns: 1fr; } }
-  .foot { margin-top: 3em; color: var(--muted); font-size: 0.9rem; }
-  ul { padding-left: 1.3em; }
-  li { margin: 0.35em 0; }
-  .index-nav { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-               padding: 14px 20px; margin: 1.5em 0; }
-  .index-nav a { font-weight: 600; }
-  .project { margin-top: 4em; padding-top: 2em; border-top: 2px solid var(--border); }
+  :root { --bg:#FBFAF8; --surface:#FFF; --ink:#23201D; --muted:#6B645D; --line:#E3DED7; --accent:#B5553D; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg:#171614; --surface:#201E1B; --ink:#EDE9E3; --muted:#A9A29A; --line:#322E2A; --accent:#D9765C; } }
+  :root[data-theme="dark"] { --bg:#171614; --surface:#201E1B; --ink:#EDE9E3; --muted:#A9A29A; --line:#322E2A; --accent:#D9765C; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.68 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:900px; margin:0 auto; padding:0 16px 88px; }
+  header { padding:60px 0 32px; border-bottom:1px solid var(--line); margin-bottom:36px; }
+  h1 { font-size:clamp(1.7rem,5vw,2.4rem); line-height:1.16; margin:0 0 18px; letter-spacing:-.02em; }
+  .lede { font-size:clamp(1rem,2.3vw,1.1rem); color:var(--muted); margin:0 0 22px; max-width:62ch; }
+  .lede strong { color:var(--ink); }
+  .links a { display:inline-block; margin:0 9px 9px 0; padding:9px 15px; border:1px solid var(--line);
+    border-radius:7px; text-decoration:none; color:var(--ink); background:var(--surface); font-size:.9rem;
+    transition:border-color .15s; }
+  .links a:hover { border-color:var(--accent); }
+  h2 { font-size:1.3rem; margin:48px 0 8px; padding-top:12px; border-top:1px solid var(--line); letter-spacing:-.01em; }
+  figure { margin:22px 0; }
+  figure img { width:100%; height:auto; display:block; border:1px solid var(--line); border-radius:9px; background:#fff; }
+  figcaption { font-size:.85rem; color:var(--muted); margin-top:9px; max-width:70ch; }
+  p { margin:0 0 16px; max-width:70ch; }
+  code { background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:1px 5px; font-size:.86em;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+  footer { margin-top:60px; padding-top:22px; border-top:1px solid var(--line); font-size:.86rem; color:var(--muted); }
+  a { color:var(--accent); }
 </style>
 </head>
 <body>
-<main>
-  <h1>Fraud Detection Techniques Lab</h1>
-  <p class="tagline">Two real-dataset approaches to credit card fraud, from the same lab: a
-  supervised model-iteration benchmark, and an unsupervised-vs-supervised comparison that
-  quantifies exactly what confirmed fraud labels are worth.</p>
-
-  <div class="index-nav">
-    <a href="#fraud-2023">① Catching Credit Card Fraud</a> (2023 dataset, supervised iteration)
-    &nbsp;·&nbsp;
-    <a href="#ae-vs-xgboost">② Autoencoder vs. Supervised XGBoost</a> (ULB dataset, label-value quantified)
-  </div>
-
-  <div class="project" id="fraud-2023" style="border-top:none; margin-top:1em; padding-top:0;">
-  <h1>① Catching Credit Card Fraud</h1>
-  <p class="tagline">Fraud classification on <strong>568,629 real 2023 credit card transactions</strong> —
-  iterating from a Logistic Regression + SMOTE baseline to CatBoost/XGBoost to a PyTorch MLP trained with
-  Focal Loss, validated for train/test distributional health, and calibrated by a business cost matrix
-  instead of the default 0.5 threshold.</p>
-
-  <div class="badges">
-    <img src="https://img.shields.io/badge/Python-3.10-3776AB" alt="Python">
-    <img src="https://img.shields.io/badge/ML-CatBoost%20%7C%20XGBoost-EB5E28" alt="CatBoost/XGBoost">
-    <img src="https://img.shields.io/badge/DL-PyTorch%20%7C%20Focal%20Loss-EE4C2C" alt="PyTorch">
-    <img src="https://img.shields.io/badge/deploy-ONNX%20Runtime-005CED" alt="ONNX">
-    <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
-  </div>
-
-  <p>
-    <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab/tree/main/01-credit-card-fraud-multilang">Source on GitHub</a>
-    · part of the <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">Fraud Detection Techniques Lab</a>
-  </p>
-
-  <h2>Dataset</h2>
-  <div class="card">
-    <strong><a href="https://www.kaggle.com/datasets/nelgiriyewithana/credit-card-fraud-detection-dataset-2023">Credit Card Fraud Detection Dataset 2023</a></strong>
-    (Kaggle, uploaded by Nelgiriyewithana) — 568,629 real transactions, PCA-anonymized components
-    <code>V1</code>–<code>V28</code> (same anonymization scheme as the classic ULB dataset) plus
-    <code>Amount</code>. License: see the dataset page on Kaggle. Downloaded for this run on 2026-10-01.
-  </div>
-  <p>This means there are <strong>no raw entity columns</strong> (card/device/IP) for dynamic
-  per-entity aggregation, unlike IEEE-CIS's original multi-table schema — disclosed explicitly
-  rather than pretended away. Adversarial validation (train-vs-test classifier) confirms a healthy
-  split: AUC 0.5005, statistically indistinguishable.</p>
-
-  <h2>Techniques</h2>
-  <ul>
-    <li><strong>Class imbalance</strong>: SMOTE oversampling baseline, plus class-balanced CatBoost/XGBoost.</li>
-    <li><strong>Model iteration</strong>: Logistic Regression → CatBoost → XGBoost → PyTorch MLP with Focal Loss (ReLU/GELU/Swish compared).</li>
-    <li><strong>Hyperparameter tuning</strong>: Optuna, 30-trial search over XGBoost, optimizing PR-AUC on held-out test.</li>
-    <li><strong>Decision policy</strong>: cost-matrix threshold calibration instead of the default 0.5 cutoff.</li>
-    <li><strong>Deployment</strong>: CatBoost exported to ONNX; XGBoost hand-reimplemented in pure Rust.</li>
-    <li><strong>Cross-language verification</strong>: an independent R GLM cross-checks the Python logistic baseline.</li>
-  </ul>
-
-  <h2>Results — real run, 20% held-out test set</h2>
-  <table>
-    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th><th>Cost @ 0.5</th><th>Cost @ best threshold</th><th>Reduction</th></tr>
-    <tr><td>LogReg + SMOTE</td><td>0.9942</td><td>0.9950</td><td>257,950</td><td>134,440</td><td>47.9%</td></tr>
-    <tr><td>CatBoost</td><td>1.0000</td><td>0.9999</td><td>930</td><td>770</td><td>17.2%</td></tr>
-    <tr><td>XGBoost</td><td>1.0000</td><td>1.0000</td><td>470</td><td>260</td><td>44.7%</td></tr>
-    <tr><td><strong>XGBoost, Optuna-tuned (30 trials)</strong></td><td>—</td><td>0.999988</td><td>—</td><td><strong>180</strong></td><td>—</td></tr>
-    <tr><td>MLP + Focal Loss</td><td>1.0000</td><td>1.0000</td><td>1,430</td><td>1,150</td><td>19.6%</td></tr>
-  </table>
-  <p style="color:var(--muted); font-size:0.9rem;">Business cost = 100 units per undetected fraud (false negative)
-  + 10 units per legitimate transaction wrongly flagged (false positive).</p>
-
-  <div class="gallery">
-    <img class="chart" src="assets/model_comparison_with_mlp.png" alt="Model comparison including MLP">
-    <img class="chart" src="assets/pca_correlation.png" alt="PCA component correlation with fraud">
-    <img class="chart" src="assets/mlp_loss_curves.png" alt="MLP validation loss per epoch by activation">
-  </div>
-
-  <h2>Honest caveat</h2>
-  <div class="card">
-    These near-perfect scores reflect this specific dataset's characteristics — artificially
-    class-balanced (50/50, real-world card fraud is closer to 0.1–1%) and apparently close to
-    linearly separable in its PCA space — <strong>not</strong> a claim that production fraud
-    detection achieves ROC-AUC 1.0. This is a well-documented property of this exact Kaggle
-    dataset, disclosed here rather than presented as a realistic production benchmark.
-  </div>
-
-  <h2>Reproduce it</h2>
-  <pre><code>git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
-cd fraud-detection-techniques-lab/01-credit-card-fraud-multilang
-python -m venv venv &amp;&amp; venv\Scripts\activate
-pip install -r requirements.txt
-kaggle datasets download -d nelgiriyewithana/credit-card-fraud-detection-dataset-2023 -p data/raw --unzip
-pytest -q</code></pre>
-
-  </div>
-
-  <div class="project" id="ae-vs-xgboost">
-  <h1>② Deep Autoencoder vs. Supervised XGBoost</h1>
-  <p class="tagline">A quantified answer to a question every fraud/AML team eventually asks:
-  <em>"how much are we losing by not having confirmed labels yet?"</em> Three unsupervised PyTorch
-  architectures (Autoencoder, VAE, Deep SVDD) trained on <strong>only legitimate transactions</strong>
-  — the realistic day-one scenario — benchmarked against a supervised XGBoost trained once fraud
-  confirmations exist, on the real <strong>ULB/Worldline</strong> dataset (284,807 transactions,
-  492 confirmed frauds). A cost-sensitive threshold optimizer turns each model's raw score into an
-  actual alerting decision.</p>
-
-  <div class="badges">
-    <img src="https://img.shields.io/badge/PyTorch-2.x-EE4C2C" alt="PyTorch">
-    <img src="https://img.shields.io/badge/XGBoost-2.0-337AB7" alt="XGBoost">
-    <img src="https://img.shields.io/badge/SHAP-0.4x-8A2BE2" alt="SHAP">
-    <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="MIT">
-  </div>
-
-  <p>
-    <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab/tree/main/04-autoencoder-vs-supervised">Source on GitHub</a>
-    · part of the <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">Fraud Detection Techniques Lab</a>
-  </p>
-
-  <h2>Dataset</h2>
-  <div class="card">
-    <strong><a href="https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud">Credit Card Fraud Detection</a></strong>
-    (Kaggle, ULB Machine Learning Group / Pozzolo et al., mirrored via
-    <a href="https://www.openml.org/d/1597">OpenML dataset 1597</a>) — 284,807 European
-    cardholder transactions, September 2013, 492 confirmed frauds (0.172%). PCA components
-    <code>V1</code>–<code>V28</code>; <code>Time</code>/<code>Amount</code> untransformed.
-    Downloaded for this run on 2026-10-01 (exact row count verified: 284,807).
-  </div>
-
-  <h2>Headline comparison — real held-out test set</h2>
-  <table>
-    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-    <tr><td>Autoencoder (unsupervised, zero labels used)</td><td>0.931</td><td>0.242</td></tr>
-    <tr><td><strong>XGBoost (supervised, real labels)</strong></td><td><strong>0.965</strong></td><td><strong>0.834</strong></td></tr>
-    <tr><td>Hybrid (XGBoost + autoencoder feature)</td><td>0.969</td><td>0.829</td></tr>
-  </table>
-  <p>ROC-AUC alone suggests the autoencoder is "almost as good" (0.931 vs. 0.965). PR-AUC tells
-  the real story: going from zero labels to real confirmed labels is a <strong>3.4x jump in
-  average precision</strong> (0.242 → 0.834).</p>
-  <img class="chart" src="assets/comparacion_modelos.png" alt="Model comparison">
-
-  <h2>AE vs. VAE vs. Deep SVDD — same protocol, different objective</h2>
-  <table>
-    <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-    <tr><td>Autoencoder (standard)</td><td>0.931</td><td>0.242</td></tr>
-    <tr><td>VAE</td><td>0.947</td><td>0.515</td></tr>
-    <tr><td><strong>Deep SVDD</strong></td><td>0.946</td><td><strong>0.743</strong></td></tr>
-  </table>
-  <p><strong>Deep SVDD's PR-AUC (0.743) is roughly 3x the standard autoencoder's (0.242)</strong> and
-  approaches XGBoost's supervised 0.834 — without ever seeing a fraud label. Dropping reconstruction
-  entirely and concentrating normal transactions into a hypersphere separates this dataset's fraud
-  pattern substantially better than learning to reconstruct it.</p>
-  <div class="gallery">
-    <img class="chart" src="assets/ae_vae_svdd_precision_recall.png" alt="AE vs VAE vs Deep SVDD precision-recall">
-    <img class="chart" src="assets/ae_vae_svdd_score_distributions.png" alt="AE vs VAE vs Deep SVDD score distributions">
-  </div>
-
-  <h2>Cost-sensitive threshold optimization — real financial impact</h2>
-  <table>
-    <tr><th>Model</th><th>Alerts</th><th>TP/FP/FN</th><th>Total cost</th><th>Reduction</th></tr>
-    <tr><td>Autoencoder</td><td>286</td><td>47/239/27</td><td>$5,731.99</td><td>32.4%</td></tr>
-    <tr><td>VAE</td><td>143</td><td>55/88/19</td><td>$4,683.26</td><td>44.8%</td></tr>
-    <tr><td>Deep SVDD</td><td>143</td><td>58/85/16</td><td>$4,808.88</td><td>43.3%</td></tr>
-    <tr><td><strong>XGBoost</strong></td><td>143</td><td>63/80/11</td><td>$4,636.08</td><td><strong>45.4%</strong></td></tr>
-  </table>
-  <p style="color:var(--muted); font-size:0.9rem;">Cost matrix: fixed $5 per false-positive review;
-  false-negative cost = the real dollar amount of that missed fraud. Baseline (no model): $8,483.36
-  total fraud on 74 confirmed test-set frauds.</p>
-  <img class="chart" src="assets/ae_vae_svdd_cost_curves.png" alt="Cost vs alert budget">
-
-  <h2>Honest caveat — a negative result, reported as found</h2>
-  <div class="card">
-    Adding the autoencoder's reconstruction error as an extra XGBoost feature moved ROC-AUC up
-    marginally (0.965 → 0.969) but <strong>PR-AUC down slightly</strong> (0.834 → 0.829) — a wash,
-    not an improvement. XGBoost, given the raw 30 PCA features directly, already extracts whatever
-    signal the autoencoder's single reconstruction-error number summarizes. Reported as a negative
-    result on purpose, rather than quietly dropped because it didn't confirm the hoped-for story.
-  </div>
-
-  <h2>Reproduce it</h2>
-  <pre><code>git clone https://github.com/Rxyxs/fraud-detection-techniques-lab.git
-cd fraud-detection-techniques-lab/04-autoencoder-vs-supervised
-python -m venv venv &amp;&amp; venv\Scripts\activate
-pip install -r requirements.txt
-python data/download_dataset.py
-pytest -q</code></pre>
-  </div>
-
-  <p class="foot">Pablo Reyes — <a href="https://github.com/Rxyxs">github.com/Rxyxs</a>. Code: MIT.</p>
-</main>
-</body>
-</html>
+<div class="wrap">
+<header>
+<h1>Fraud Detection Techniques Lab</h1>
+<p class="lede">Four fraud/AML detection approaches in one lab, each isolating a different technique on a different data profile — real-world card fraud, real-time e-commerce, interbank AML typologies, and a direct autoencoder-vs-supervised comparison. Each folder is self-contained with its own README, dependencies, tests and figures.</p>
+<div class="links">
+<a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">Code and method</a>
+<a href="https://github.com/Rxyxs/fraud-detection-techniques-lab#readme">Full README</a>
+</div></header>
+<p>This page shows the project's results. The methodology, the design decisions and the limitations are documented in the repository's README.</p>
+<h2>How much you lose without labels</h2>
+<figure>
+<img src="figures/precision_recall_curves.png" alt="Precision-Recall: unsupervised vs supervised vs hybrid" loading="lazy">
+<figcaption><strong>How to read it.</strong> Five models on the identical held-out test set of the real ULB dataset. The dashed line at the bottom is chance (0.0017 prevalence). The three unsupervised models saw <strong>zero fraud labels</strong> during training — the realistic day-one scenario.</figcaption>
+</figure>
+<h2>Why the top of the alert queue is not the best place to stop</h2>
+<figure>
+<img src="figures/precision_recall_sweep.png" alt="Precision/recall by alert budget" loading="lazy">
+<figcaption><strong>How to read it.</strong> The x axis is the fraction of accounts flagged for review — the analyst team&#x27;s capacity. Red is precision on those alerts, blue is recall against the injected UAF typologies.</figcaption>
+</figure>
+<h2>Cost-calibrated decisions, not a 0.5 cutoff</h2>
+<figure>
+<img src="figures/model_comparison.png" alt="Model comparison" loading="lazy">
+<figcaption><strong>How to read it — including a trap in the right-hand panel.</strong> On the left, PR-AUC for the three main models on a zoomed axis (0.990–1.000): they are effectively tied, which makes the ranking metric useless for choosing between them. On the right, the percentage by which threshold calibration cut the business cost relative to each model&#x27;s *own* 0.5-threshold baseline.</figcaption>
+</figure>
+<footer>
+Pablo Reyes · <a href="https://github.com/Rxyxs/fraud-detection-techniques-lab">github.com/Rxyxs/fraud-detection-techniques-lab</a> · MIT<br><br>
+Every figure on this page is produced by the repository's pipeline. For the full method and its limitations, see the README.
+</footer>
+</div></body></html>
