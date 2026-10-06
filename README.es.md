@@ -84,7 +84,7 @@ Un segundo hilo que vale nombrar: **los resultados negativos se reportan como ha
 
 Cada técnica es real, ejecutable y testeada de forma independiente — no se trata de esconder alcance sino de representarlo con precisión. Cuatro repos con descripciones superpuestas de "detección de fraude" se leen como repetición; un laboratorio con cuatro técnicas claramente diferenciadas (trabajo de sistemas multi-lenguaje, serving en tiempo real, AML no supervisado sobre grafos, y una comparación directa entre supervisado y no supervisado) se lee como lo que realmente es: un estudio sistemático del mismo problema desde ángulos distintos.
 
-Trabajo relacionado en este perfil: [`Proyectos_ML_anomalias`](https://github.com/Rxyxs/Proyectos_ML_anomalias) lleva el ángulo no supervisado mucho más lejos — 16 familias de detectores comparadas sobre el mismo split, garantías de cobertura conformes, y una capa operativa que convierte scores en umbrales y en dinero. Su resultado de Deep SVDD reproduce de forma independiente lo que encuentra la carpeta 04 de acá.
+Trabajo relacionado en este perfil: [`paysim-anomaly-detection-benchmark`](https://github.com/Rxyxs/paysim-anomaly-detection-benchmark) lleva el ángulo no supervisado mucho más lejos — 16 familias de detectores comparadas sobre el mismo split, garantías de cobertura conformes, y una capa operativa que convierte scores en umbrales y en dinero. Su resultado de Deep SVDD reproduce de forma independiente lo que encuentra la carpeta 04 de acá.
 
 ## Cómo correr una técnica
 

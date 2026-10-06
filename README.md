@@ -84,7 +84,7 @@ A second thread worth naming: **the negative results are reported as findings.**
 
 Each technique is real, runnable and independently tested — this isn't about hiding scope, it's about representing it accurately. Four repos with overlapping "fraud detection" descriptions read as repetition; one lab with four clearly differentiated techniques (multi-language systems work, real-time serving, graph/unsupervised AML, and a direct supervised-vs-unsupervised comparison) reads as what it actually is: a systematic study of the same problem from different angles.
 
-Related work on this profile: [`Proyectos_ML_anomalias`](https://github.com/Rxyxs/Proyectos_ML_anomalias) takes the unsupervised angle much further — 16 detector families benchmarked on the same split, conformal coverage guarantees, and an operational layer that turns scores into thresholds and money. Its Deep SVDD result independently reproduces what folder 04 finds here.
+Related work on this profile: [`paysim-anomaly-detection-benchmark`](https://github.com/Rxyxs/paysim-anomaly-detection-benchmark) takes the unsupervised angle much further — 16 detector families benchmarked on the same split, conformal coverage guarantees, and an operational layer that turns scores into thresholds and money. Its Deep SVDD result independently reproduces what folder 04 finds here.
 
 ## Running a technique
 
