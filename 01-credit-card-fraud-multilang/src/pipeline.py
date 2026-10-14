@@ -65,16 +65,23 @@ def main() -> None:
     results.append(evaluate_model("xgboost", y_test, xgb_proba))
 
     print("[5b/6] Deep learning: MLP + Focal Loss, comparando ReLU vs. GELU vs. Swish...")
-    X_train_scaled = scaler.transform(X_train)
+    # Validacion = 15% del train (estratificado), nunca el test: el early stopping y la eleccion de
+    # activacion miran esta particion, y el test se usa una sola vez, en evaluate_model.
+    X_fit, X_val, y_fit, y_val = train_test_split(
+        X_train, y_train, test_size=0.15, stratify=y_train, random_state=42,
+    )
+    X_fit_scaled = scaler.transform(X_fit)
+    X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
     activation_models, activation_history = compare_activations(
-        X_train_scaled, y_train, X_test_scaled, y_test, n_epochs=15,
+        X_fit_scaled, y_fit, X_val_scaled, y_val, checkpoint_dir=MODELS_DIR / "checkpoints",
     )
-    best_activation = (
-        activation_history[activation_history["epoch"] == activation_history["epoch"].max()]
-        .set_index("activation")["val_loss"].idxmin()
-    )
-    print(f"  Mejor activacion por val_loss final: {best_activation}")
+    best_rows = activation_history[activation_history["is_best"]].set_index("activation")
+    best_activation = best_rows["val_loss"].idxmin()
+    for name, row in best_rows.iterrows():
+        n_run = int(activation_history.loc[activation_history["activation"] == name, "epoch"].max())
+        print(f"  {name:6s} mejor epoca {int(row['epoch'])} de {n_run}, val_loss {row['val_loss']:.6f}")
+    print(f"  Mejor activacion por val_loss (validacion, no test): {best_activation}")
     mlp_proba = predict_proba(activation_models[best_activation], X_test_scaled)
     results.append(evaluate_model("mlp_focal_loss", y_test, mlp_proba))
 

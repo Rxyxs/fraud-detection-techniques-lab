@@ -62,8 +62,8 @@ flowchart TD
 | LogReg + SMOTE | 0.9942 | 0.9950 | 257,950 | 0.101 | 134,440 | 47.9% |
 | CatBoost | 1.0000 | 0.9999 | 930 | 0.588 | 770 | 17.2% |
 | XGBoost | 1.0000 | 1.0000 | 470 | 0.734 | 260 | 44.7% |
-| **XGBoost, Optuna-tuned (30 trials)** | — | 0.999988 | — | — | **180** | — |
-| MLP + Focal Loss (PyTorch) | 1.0000 | 1.0000 | 1,430 | 0.407 | 1,150 | 19.6% |
+| **XGBoost, Optuna-tuned (30 trials)** | — | 0.999988 | — | — | 180 | — |
+| MLP + Focal Loss (PyTorch, early stopping) | 1.0000 | 1.0000 | 310 | 0.709 | **160** | 48.4% |
 
 Business cost = 100 units per undetected fraud (false negative) + 10 units per legitimate transaction wrongly flagged (false positive) — illustrative but realistic weighting for consumer card fraud.
 
@@ -71,7 +71,9 @@ Business cost = 100 units per undetected fraud (false negative) + 10 units per l
 
 ### 4th approach: PyTorch MLP with Focal Loss + activation comparison
 
-A complementary deep learning approach (`src/deep.py`): a small MLP (`64 -> 32 -> 1`, dropout 0.2) trained with [Focal Loss](https://arxiv.org/abs/1708.02002) (`alpha=0.25`, `gamma=2.0`) instead of plain BCE — the correct loss family for fraud, since it downweights easy/well-classified examples and concentrates gradient on hard ones, independent of whether this specific dataset happens to be class-balanced. The identical architecture is trained three times with **ReLU, GELU, and Swish (SiLU)** on the same train/validation split, so the activation choice is decided by measured validation loss per epoch (`outputs/reports/mlp_activation_history.csv`, `mlp_loss_curves.png`) rather than assumed — ReLU won on this run. On this near-linearly-separable dataset the MLP lands in the same ROC-AUC/PR-AUC tier as the tree ensembles but with a higher calibrated business cost — reported as-is rather than cherry-picked, since a small MLP has no structural advantage here over gradient-boosted trees on tabular PCA components.
+A complementary deep learning approach (`src/deep.py`): a small MLP (`64 -> 32 -> 1`, dropout 0.2) trained with [Focal Loss](https://arxiv.org/abs/1708.02002) (`alpha=0.25`, `gamma=2.0`) instead of plain BCE — the correct loss family for fraud, since it downweights easy/well-classified examples and concentrates gradient on hard ones, independent of whether this specific dataset happens to be class-balanced. The identical architecture is trained three times with **ReLU, GELU, and Swish (SiLU)**. Validation is a stratified 15% of the training set, never the test set: each network trains for at least 100 epochs (at most 300), then early stopping ends the run after 15 epochs without improvement in validation loss and restores the best epoch's weights; the learning rate halves on plateaus, and the full state is checkpointed every epoch so an interrupted run resumes. The activation is chosen on validation loss (`outputs/reports/mlp_activation_history.csv`, `mlp_loss_curves.png`): ReLU, best at epoch 122 of 137, against GELU (epoch 66) and Swish (epoch 77).
+
+Longer training changed the result. The previous version trained 15 fixed epochs and measured its "validation" curve on the test set; it cost 1,150 at its best threshold, the worst of the non-linear models. Trained to convergence, the MLP costs **160**, below XGBoost (260) and the Optuna-tuned XGBoost (180). The threshold that minimises cost is still picked on the test set, for every model alike, so all the "cost @ best" figures are optimistic in the same way; with differences of a few false positives on 113,726 test transactions, the honest reading is that the MLP and boosted trees are tied at the top.
 
 The animated version races each activation's validation-loss curve across epochs, with a floating label tracking its current loss value.
 
