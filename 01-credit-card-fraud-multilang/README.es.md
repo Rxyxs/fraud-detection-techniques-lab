@@ -62,8 +62,8 @@ flowchart TD
 | LogReg + SMOTE | 0,9942 | 0,9950 | 257.950 | 0,101 | 134.440 | 47,9% |
 | CatBoost | 1,0000 | 0,9999 | 930 | 0,588 | 770 | 17,2% |
 | XGBoost | 1,0000 | 1,0000 | 470 | 0,734 | 260 | 44,7% |
-| **XGBoost, afinado con Optuna (30 trials)** | — | 0,999988 | — | — | **180** | — |
-| MLP + Focal Loss (PyTorch) | 1,0000 | 1,0000 | 1.430 | 0,407 | 1.150 | 19,6% |
+| **XGBoost, afinado con Optuna (30 trials)** | — | 0,999988 | — | — | 180 | — |
+| MLP + Focal Loss (PyTorch, early stopping) | 1,0000 | 1,0000 | 310 | 0,709 | **160** | 48,4% |
 
 Costo de negocio = 100 unidades por fraude no detectado (falso negativo) + 10 unidades por transacción legítima marcada por error (falso positivo) — ponderación ilustrativa pero realista para fraude de tarjetas de consumo.
 
@@ -71,7 +71,9 @@ Costo de negocio = 100 unidades por fraude no detectado (falso negativo) + 10 un
 
 ### 4to enfoque: MLP en PyTorch con Focal Loss + comparación de activaciones
 
-Un enfoque complementario de deep learning (`src/deep.py`): una MLP pequeña (`64 -> 32 -> 1`, dropout 0,2) entrenada con [Focal Loss](https://arxiv.org/abs/1708.02002) (`alpha=0.25`, `gamma=2.0`) en vez de BCE plana — la familia de pérdida correcta para fraude, ya que reduce el peso de ejemplos fáciles/bien clasificados y concentra el gradiente en los difíciles, independiente de que este dataset en particular sea balanceado por clase. La misma arquitectura se entrena tres veces con **ReLU, GELU y Swish (SiLU)** sobre el mismo split de train/validación, así que la elección de activación se decide por el loss de validación medido por época (`outputs/reports/mlp_activation_history.csv`, `mlp_loss_curves.png`) en vez de asumirse — ReLU ganó en esta corrida. En este dataset casi linealmente separable, la MLP queda en el mismo nivel de ROC-AUC/PR-AUC que los ensambles de árboles pero con un costo de negocio calibrado más alto — reportado tal cual, no elegido a conveniencia, ya que una MLP pequeña no tiene ventaja estructural aquí sobre árboles con boosting sobre componentes PCA tabulares.
+Un enfoque complementario de deep learning (`src/deep.py`): una MLP pequeña (`64 -> 32 -> 1`, dropout 0,2) entrenada con [Focal Loss](https://arxiv.org/abs/1708.02002) (`alpha=0.25`, `gamma=2.0`) en vez de BCE plana — la familia de pérdida correcta para fraude, ya que reduce el peso de ejemplos fáciles/bien clasificados y concentra el gradiente en los difíciles, independiente de que este dataset en particular sea balanceado por clase. La misma arquitectura se entrena tres veces con **ReLU, GELU y Swish (SiLU)**. La validación es un 15% estratificado del train, nunca el test: cada red entrena al menos 100 épocas (máximo 300) y desde ahí early stopping corta tras 15 épocas sin mejora en la loss de validación y restaura los pesos de la mejor época; la tasa de aprendizaje baja a la mitad cuando se estanca, y el estado completo se guarda en un checkpoint cada época para retomar una corrida interrumpida. La activación se elige con la loss de validación (`outputs/reports/mlp_activation_history.csv`, `mlp_loss_curves.png`): ReLU, mejor en la época 122 de 137, frente a GELU (época 66) y Swish (época 77).
+
+Entrenar más cambió el resultado. La versión anterior entrenaba 15 épocas fijas y medía su curva de "validación" sobre el test; costaba 1.150 en su mejor umbral, la peor de los modelos no lineales. Entrenada hasta converger, la MLP cuesta **160**, por debajo de XGBoost (260) y del XGBoost ajustado con Optuna (180). El umbral que minimiza el costo se sigue eligiendo sobre el test, igual para todos los modelos, así que todas las cifras de "costo en el mejor umbral" son optimistas de la misma forma; con diferencias de unos pocos falsos positivos sobre 113.726 transacciones de test, la lectura honesta es que la MLP y los árboles con boosting empatan arriba.
 
 La versión animada dibuja progresivamente la curva de loss de validación de cada activación por época, con una etiqueta flotante que sigue su valor actual.
 
