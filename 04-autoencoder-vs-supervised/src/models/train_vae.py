@@ -19,22 +19,21 @@ if sys.platform == "win32":
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.data.preprocessing import load_raw, make_splits, normal_only
+from src.models.training import fit
 from src.models.vae import FraudVAE, reconstruction_error, vae_loss
 
 OUTPUTS_DIR = ROOT / "outputs"
 MODELS_DIR = OUTPUTS_DIR / "models"
 REPORTS_DIR = OUTPUTS_DIR / "reports"
+CHECKPOINT_DIR = MODELS_DIR / "checkpoints"
 
 RANDOM_STATE = 42
 BATCH_SIZE = 256
-MAX_EPOCHS = 100
-PATIENCE = 8
 LEARNING_RATE = 1e-3
 LATENT_DIM = 8
 KLD_WEIGHT = 0.1  # ELBO ponderado: con peso 1.0 el termino KL domina y la reconstruccion se degrada demasiado para este dataset
@@ -45,54 +44,26 @@ def _to_tensor(df: pd.DataFrame) -> torch.Tensor:
     return torch.tensor(df.to_numpy(dtype=np.float32))
 
 
-def train_vae(X_train_normal: torch.Tensor, X_val_normal: torch.Tensor, seed: int = RANDOM_STATE):
+def train_vae(X_train_normal: torch.Tensor, X_val_normal: torch.Tensor, seed: int = RANDOM_STATE,
+              checkpoint_path: Path | None = None):
     torch.manual_seed(seed)
     model = FraudVAE(input_dim=X_train_normal.shape[1], latent_dim=LATENT_DIM)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
-    loader = DataLoader(TensorDataset(X_train_normal), batch_size=BATCH_SIZE, shuffle=True,
-                         generator=torch.Generator().manual_seed(seed))
+    def batch_loss(m, batch):
+        x_hat, mu, logvar = m(batch)
+        loss, _recon, _kld = vae_loss(batch, x_hat, mu, logvar, kld_weight=KLD_WEIGHT)
+        return loss.mean()
 
-    best_val_loss = float("inf")
-    best_state = None
-    epochs_sin_mejora = 0
-    historia = []
+    def val_metrics(m, X):
+        x_hat, mu, logvar = m(X)
+        loss, recon, kld = vae_loss(X, x_hat, mu, logvar, kld_weight=KLD_WEIGHT)
+        return {"val_loss": loss.mean().item(), "val_recon": recon.mean().item(), "val_kld": kld.mean().item()}
 
-    for epoch in range(1, MAX_EPOCHS + 1):
-        model.train()
-        train_loss_total = 0.0
-        for (batch,) in loader:
-            optimizer.zero_grad()
-            x_hat, mu, logvar = model(batch)
-            loss, recon, kld = vae_loss(batch, x_hat, mu, logvar, kld_weight=KLD_WEIGHT)
-            loss = loss.mean()
-            loss.backward()
-            optimizer.step()
-            train_loss_total += loss.item() * batch.size(0)
-        train_loss = train_loss_total / len(X_train_normal)
-
-        model.eval()
-        with torch.no_grad():
-            x_hat, mu, logvar = model(X_val_normal)
-            val_loss_full, val_recon, val_kld = vae_loss(X_val_normal, x_hat, mu, logvar, kld_weight=KLD_WEIGHT)
-            val_loss = val_loss_full.mean().item()
-        historia.append({
-            "epoch": epoch, "train_loss": train_loss, "val_loss": val_loss,
-            "val_recon": val_recon.mean().item(), "val_kld": val_kld.mean().item(),
-        })
-
-        if val_loss < best_val_loss - 1e-6:
-            best_val_loss = val_loss
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
-            epochs_sin_mejora = 0
-        else:
-            epochs_sin_mejora += 1
-            if epochs_sin_mejora >= PATIENCE:
-                print(f"  Early stopping en epoch {epoch} (mejor val_loss={best_val_loss:.6f})")
-                break
-
-    model.load_state_dict(best_state)
-    return model, pd.DataFrame(historia), best_val_loss
+    return fit(
+        model, X_train_normal, X_val_normal, batch_loss=batch_loss, val_metrics=val_metrics,
+        lr=LEARNING_RATE, batch_size=BATCH_SIZE, seed=seed, checkpoint_path=checkpoint_path,
+        config={"latent": LATENT_DIM, "kld_weight": KLD_WEIGHT},
+    )
 
 
 def main():
@@ -112,7 +83,7 @@ def main():
     X_test_t = _to_tensor(splits.X_test)
 
     print("Entrenando VAE (solo con transacciones normales)...")
-    model, historia, best_val_loss = train_vae(X_train_t, X_val_t)
+    model, historia, best_val_loss = train_vae(X_train_t, X_val_t, checkpoint_path=CHECKPOINT_DIR / "vae.ckpt")
     print(f"Mejor val_loss (ELBO negativo, solo normales): {best_val_loss:.6f}")
 
     torch.save(model.state_dict(), MODELS_DIR / "vae.pt")

@@ -172,23 +172,23 @@ pytest -q</code></pre>
   <h2>Headline comparison — real held-out test set</h2>
   <table>
     <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-    <tr><td>Autoencoder (unsupervised, zero labels used)</td><td>0.931</td><td>0.242</td></tr>
+    <tr><td>Autoencoder (unsupervised, zero labels used)</td><td>0.938</td><td>0.318</td></tr>
     <tr><td><strong>XGBoost (supervised, real labels)</strong></td><td><strong>0.965</strong></td><td><strong>0.834</strong></td></tr>
-    <tr><td>Hybrid (XGBoost + autoencoder feature)</td><td>0.969</td><td>0.829</td></tr>
+    <tr><td>Hybrid (XGBoost + autoencoder feature)</td><td>0.969</td><td>0.834</td></tr>
   </table>
-  <p>ROC-AUC alone suggests the autoencoder is "almost as good" (0.931 vs. 0.965). PR-AUC tells
-  the real story: going from zero labels to real confirmed labels is a <strong>3.4x jump in
-  average precision</strong> (0.242 → 0.834).</p>
+  <p>ROC-AUC alone suggests the autoencoder is "almost as good" (0.938 vs. 0.965). PR-AUC tells
+  the real story: going from zero labels to real confirmed labels is a <strong>2.6x jump in
+  average precision</strong> (0.318 → 0.834).</p>
   <img class="chart" src="assets/comparacion_modelos.png" alt="Model comparison">
 
   <h2>AE vs. VAE vs. Deep SVDD — same protocol, different objective</h2>
   <table>
     <tr><th>Model</th><th>ROC-AUC</th><th>PR-AUC</th></tr>
-    <tr><td>Autoencoder (standard)</td><td>0.931</td><td>0.242</td></tr>
-    <tr><td>VAE</td><td>0.947</td><td>0.515</td></tr>
-    <tr><td><strong>Deep SVDD</strong></td><td>0.946</td><td><strong>0.743</strong></td></tr>
+    <tr><td>Autoencoder (standard)</td><td>0.938</td><td>0.318</td></tr>
+    <tr><td>VAE</td><td>0.920</td><td>0.265</td></tr>
+    <tr><td><strong>Deep SVDD</strong></td><td>0.935</td><td><strong>0.765</strong></td></tr>
   </table>
-  <p><strong>Deep SVDD's PR-AUC (0.743) is roughly 3x the standard autoencoder's (0.242)</strong> and
+  <p><strong>Deep SVDD's PR-AUC (0.765) is roughly 2.4x the standard autoencoder's (0.318)</strong> and
   approaches XGBoost's supervised 0.834 — without ever seeing a fraud label. Dropping reconstruction
   entirely and concentrating normal transactions into a hypersphere separates this dataset's fraud
   pattern substantially better than learning to reconstruct it.</p>
@@ -200,9 +200,9 @@ pytest -q</code></pre>
   <h2>Cost-sensitive threshold optimization — real financial impact</h2>
   <table>
     <tr><th>Model</th><th>Alerts</th><th>TP/FP/FN</th><th>Total cost</th><th>Reduction</th></tr>
-    <tr><td>Autoencoder</td><td>286</td><td>47/239/27</td><td>$5,731.99</td><td>32.4%</td></tr>
-    <tr><td>VAE</td><td>143</td><td>55/88/19</td><td>$4,683.26</td><td>44.8%</td></tr>
-    <tr><td>Deep SVDD</td><td>143</td><td>58/85/16</td><td>$4,808.88</td><td>43.3%</td></tr>
+    <tr><td>Autoencoder</td><td>143</td><td>42/101/32</td><td>$5,621.91</td><td>33.7%</td></tr>
+    <tr><td>VAE</td><td>286</td><td>46/240/28</td><td>$5,252.46</td><td>38.1%</td></tr>
+    <tr><td>Deep SVDD</td><td>143</td><td>60/83/14</td><td>$4,653.08</td><td>45.2%</td></tr>
     <tr><td><strong>XGBoost</strong></td><td>143</td><td>63/80/11</td><td>$4,636.08</td><td><strong>45.4%</strong></td></tr>
   </table>
   <p style="color:var(--muted); font-size:0.9rem;">Cost matrix: fixed $5 per false-positive review;
@@ -213,7 +213,7 @@ pytest -q</code></pre>
   <h2>Honest caveat — a negative result, reported as found</h2>
   <div class="card">
     Adding the autoencoder's reconstruction error as an extra XGBoost feature moved ROC-AUC up
-    marginally (0.965 → 0.969) but <strong>PR-AUC down slightly</strong> (0.834 → 0.829) — a wash,
+    marginally (0.965 → 0.969) and <strong>left PR-AUC unchanged</strong> (0.8338 → 0.8338) — a wash,
     not an improvement. XGBoost, given the raw 30 PCA features directly, already extracts whatever
     signal the autoencoder's single reconstruction-error number summarizes. Reported as a negative
     result on purpose, rather than quietly dropped because it didn't confirm the hoped-for story.
