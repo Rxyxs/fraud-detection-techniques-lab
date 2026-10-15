@@ -22,7 +22,7 @@ Every number below comes from an actual run of that folder's pipeline, not from 
 | **01** | [Multi-language pipeline on real data](01-credit-card-fraud-multilang) | Business cost **260 → 180** after Optuna tuning | PR-AUC was already saturated at 1.0000 and went *down* (0.999988). **Tuning paid off in the cost-calibrated threshold, not the ranking metric** — reported exactly as it happened |
 | **02** | [Real-time detection](02-realtime-ecommerce-fraud) | Recall **0.955** at precision **1.000** — 105/110 frauds caught, **0 false alarms**, scored at **1.59ms p95** | A real architecture bug: dying ReLU in a 4-unit autoencoder bottleneck — negative pre-activations starved a network with no spare capacity. LeakyReLU lifted recall 0.900 → 0.955 (11 missed frauds → 5) and F1 0.947 → 0.977 |
 | **03** | [Graph-based unsupervised AML](03-graph-based-aml-detection) | ROC-AUC **0.893** with **zero labels**, on 43,009 transfers | Precision peaks at a **3% alert budget (51.7%), not 1% (40.0%)** — the very top of the ranking is a handful of extreme outliers, and widening slightly finds more true positives |
-| **04** | [Autoencoder vs. supervised](04-autoencoder-vs-supervised) | Cold-start → mature: PR-AUC **0.242 → 0.834 (3.4x)** | ROC-AUC hides that entirely (0.931 vs 0.965 reads as "almost as good"). The **hybrid was slightly worse** than plain XGBoost (0.829 vs 0.834) and is reported as the negative result it is |
+| **04** | [Autoencoder vs. supervised](04-autoencoder-vs-supervised) | Cold-start → mature: PR-AUC **0.318 → 0.834 (2.6x)** | ROC-AUC hides that entirely (0.938 vs 0.965 reads as "almost as good"). The **hybrid added nothing** over plain XGBoost (0.834 vs 0.834) and is reported as the negative result it is |
 
 ### Datasets
 
@@ -43,7 +43,7 @@ Every number below comes from an actual run of that folder's pipeline, not from 
 
 **How to read it.** Five models on the identical held-out test set of the real ULB dataset. The dashed line at the bottom is chance (0.0017 prevalence). The three unsupervised models saw **zero fraud labels** during training — the realistic day-one scenario.
 
-The vertical distance between the blue curve (plain autoencoder) and the green one (supervised XGBoost) is the cost of not yet having confirmed labels, and it is large: PR-AUC 0.242 against 0.834. Note also how far apart the three unsupervised models are from each other: **Deep SVDD (teal) stays within ~0.1 precision of supervised XGBoost across most of the range**, the VAE (orange) sits well below it, and the plain autoencoder (blue) is worst by a wide margin. The choice of unsupervised objective matters more than the fact of being unsupervised.
+The vertical distance between the blue curve (plain autoencoder) and the green one (supervised XGBoost) is the cost of not yet having confirmed labels, and it is large: PR-AUC 0.318 against 0.834. Note also how far apart the three unsupervised models are from each other: **Deep SVDD (teal) stays within ~0.1 precision of supervised XGBoost across most of the range**, while the plain autoencoder (blue) and the VAE (orange) sit far below it, close to each other (PR-AUC 0.318 and 0.265). The choice of unsupervised objective matters more than the fact of being unsupervised.
 
 ### Why the top of the alert queue is not the best place to stop
 
@@ -72,7 +72,7 @@ The four techniques were built independently, on different data, for different o
 > **The metric you optimize is not the metric that decides.**
 
 - In **01**, PR-AUC saturates at 1.0000 and stops discriminating between models — while the cost-calibrated threshold keeps separating them by a factor of 700x.
-- In **04**, ROC-AUC says the unsupervised autoencoder is "almost as good" as supervised XGBoost (0.931 vs 0.965). PR-AUC says it recovers less than a third as much (0.242 vs 0.834). Both are correct; only one is useful under a 0.172% fraud rate.
+- In **04**, ROC-AUC says the unsupervised autoencoder is "almost as good" as supervised XGBoost (0.938 vs 0.965). PR-AUC says it recovers well under half as much (0.318 vs 0.834). Both are correct; only one is useful under a 0.172% fraud rate.
 - In **03**, the ranking is good (ROC-AUC 0.893) but the operating point that maximizes precision isn't where anyone would look for it.
 - In **02**, the deployed threshold minimizes an explicit CLP cost function rather than defaulting to 0.5 — which is what produces 0 false alarms at 0.955 recall.
 

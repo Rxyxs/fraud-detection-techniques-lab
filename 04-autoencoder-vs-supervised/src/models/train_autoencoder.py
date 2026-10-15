@@ -17,22 +17,21 @@ if sys.platform == "win32":
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from src.data.preprocessing import load_raw, make_splits, normal_only
+from src.models.training import fit
 from src.models.autoencoder import FraudAutoencoder, reconstruction_error
 
 OUTPUTS_DIR = ROOT / "outputs"
 MODELS_DIR = OUTPUTS_DIR / "models"
 REPORTS_DIR = OUTPUTS_DIR / "reports"
+CHECKPOINT_DIR = MODELS_DIR / "checkpoints"
 
 RANDOM_STATE = 42
 BATCH_SIZE = 256
-MAX_EPOCHS = 100
-PATIENCE = 8
 LEARNING_RATE = 1e-3
 BOTTLENECK_DIM = 8
 THRESHOLD_PERCENTILES = [90, 95, 97, 99, 99.5]
@@ -42,49 +41,18 @@ def _to_tensor(df: pd.DataFrame) -> torch.Tensor:
     return torch.tensor(df.to_numpy(dtype=np.float32))
 
 
-def train_autoencoder(X_train_normal: torch.Tensor, X_val_normal: torch.Tensor, seed: int = RANDOM_STATE):
+def train_autoencoder(X_train_normal: torch.Tensor, X_val_normal: torch.Tensor, seed: int = RANDOM_STATE,
+                      checkpoint_path: Path | None = None):
     torch.manual_seed(seed)
     model = FraudAutoencoder(input_dim=X_train_normal.shape[1], bottleneck_dim=BOTTLENECK_DIM)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     loss_fn = torch.nn.MSELoss()
-
-    loader = DataLoader(TensorDataset(X_train_normal), batch_size=BATCH_SIZE, shuffle=True,
-                         generator=torch.Generator().manual_seed(seed))
-
-    best_val_loss = float("inf")
-    best_state = None
-    epochs_sin_mejora = 0
-    historia = []
-
-    for epoch in range(1, MAX_EPOCHS + 1):
-        model.train()
-        train_loss_total = 0.0
-        for (batch,) in loader:
-            optimizer.zero_grad()
-            reconstructed = model(batch)
-            loss = loss_fn(reconstructed, batch)
-            loss.backward()
-            optimizer.step()
-            train_loss_total += loss.item() * batch.size(0)
-        train_loss = train_loss_total / len(X_train_normal)
-
-        model.eval()
-        with torch.no_grad():
-            val_loss = loss_fn(model(X_val_normal), X_val_normal).item()
-        historia.append({"epoch": epoch, "train_loss": train_loss, "val_loss": val_loss})
-
-        if val_loss < best_val_loss - 1e-6:
-            best_val_loss = val_loss
-            best_state = {k: v.clone() for k, v in model.state_dict().items()}
-            epochs_sin_mejora = 0
-        else:
-            epochs_sin_mejora += 1
-            if epochs_sin_mejora >= PATIENCE:
-                print(f"  Early stopping en epoch {epoch} (mejor val_loss={best_val_loss:.6f})")
-                break
-
-    model.load_state_dict(best_state)
-    return model, pd.DataFrame(historia), best_val_loss
+    return fit(
+        model, X_train_normal, X_val_normal,
+        batch_loss=lambda m, batch: loss_fn(m(batch), batch),
+        val_metrics=lambda m, X: {"val_loss": loss_fn(m(X), X).item()},
+        lr=LEARNING_RATE, batch_size=BATCH_SIZE, seed=seed, checkpoint_path=checkpoint_path,
+        config={"bottleneck": BOTTLENECK_DIM},
+    )
 
 
 def main():
@@ -106,7 +74,7 @@ def main():
     X_test_t = _to_tensor(splits.X_test)
 
     print("Entrenando autoencoder (solo con transacciones normales)...")
-    model, historia, best_val_loss = train_autoencoder(X_train_t, X_val_t)
+    model, historia, best_val_loss = train_autoencoder(X_train_t, X_val_t, checkpoint_path=CHECKPOINT_DIR / "autoencoder.ckpt")
     print(f"Mejor val_loss (MSE reconstruccion, solo normales): {best_val_loss:.6f}")
 
     torch.save(model.state_dict(), MODELS_DIR / "autoencoder.pt")

@@ -22,7 +22,7 @@ Todos los números de abajo provienen de una corrida real del pipeline de esa ca
 | **01** | [Pipeline multi-lenguaje sobre datos reales](01-credit-card-fraud-multilang) | Costo de negocio **260 → 180** tras ajustar con Optuna | El PR-AUC ya estaba saturado en 1.0000 y *bajó* (0.999988). **La mejora del ajuste apareció en el umbral calibrado por costo, no en la métrica de ranking** — reportado exactamente como ocurrió |
 | **02** | [Detección en tiempo real](02-realtime-ecommerce-fraud) | Recall **0.955** con precisión **1.000** — 105/110 fraudes atrapados, **0 falsas alarmas**, puntuando en **1,59ms p95** | Un bug real de arquitectura: ReLU moribunda en un cuello de botella de 4 unidades — las preactivaciones negativas mataban de hambre a una red sin capacidad de sobra. LeakyReLU subió el recall de 0.900 a 0.955 (de 11 fraudes perdidos a 5) y el F1 de 0.947 a 0.977 |
 | **03** | [AML no supervisado sobre grafo](03-graph-based-aml-detection) | ROC-AUC **0.893** con **cero etiquetas**, sobre 43.009 transferencias | La precisión alcanza su máximo con un presupuesto de alertas del **3% (51,7%), no del 1% (40,0%)** — la punta del ranking son unos pocos outliers extremos, y ampliar un poco encuentra más positivos reales |
-| **04** | [Autoencoder contra supervisado](04-autoencoder-vs-supervised) | Arranque en frío → sistema maduro: PR-AUC **0.242 → 0.834 (3,4x)** | El ROC-AUC oculta eso por completo (0.931 contra 0.965 se lee como "casi igual de bueno"). El **híbrido resultó levemente peor** que XGBoost solo (0.829 contra 0.834) y se reporta como el resultado negativo que es |
+| **04** | [Autoencoder contra supervisado](04-autoencoder-vs-supervised) | Arranque en frío → sistema maduro: PR-AUC **0.318 → 0.834 (2,6x)** | El ROC-AUC oculta eso por completo (0.938 contra 0.965 se lee como "casi igual de bueno"). El **híbrido no agregó nada** sobre XGBoost solo (0.834 contra 0.834) y se reporta como el resultado negativo que es |
 
 ### Datos
 
@@ -43,7 +43,7 @@ Todos los números de abajo provienen de una corrida real del pipeline de esa ca
 
 **Cómo leerla.** Cinco modelos sobre el mismo conjunto de prueba del dataset real ULB. La línea punteada de abajo es el azar (prevalencia 0,0017). Los tres modelos no supervisados vieron **cero etiquetas de fraude** durante el entrenamiento — el escenario realista del día uno.
 
-La distancia vertical entre la curva azul (autoencoder simple) y la verde (XGBoost supervisado) es el costo de no tener todavía etiquetas confirmadas, y es grande: PR-AUC 0.242 contra 0.834. Vale notar además lo lejos que están los tres no supervisados entre sí: **Deep SVDD (turquesa) se mantiene a menos de ~0,1 de precisión del XGBoost supervisado en casi todo el rango**, el VAE (naranja) queda bastante por debajo, y el autoencoder simple (azul) es el peor por mucho. La elección del objetivo no supervisado pesa más que el hecho de ser no supervisado.
+La distancia vertical entre la curva azul (autoencoder simple) y la verde (XGBoost supervisado) es el costo de no tener todavía etiquetas confirmadas, y es grande: PR-AUC 0.318 contra 0.834. Vale notar además lo lejos que están los tres no supervisados entre sí: **Deep SVDD (turquesa) se mantiene a menos de ~0,1 de precisión del XGBoost supervisado en casi todo el rango**, mientras el autoencoder simple (azul) y el VAE (naranja) quedan muy por debajo, cerca uno del otro (PR-AUC 0.318 y 0.265). La elección del objetivo no supervisado pesa más que el hecho de ser no supervisado.
 
 ### Por qué la punta de la cola de alertas no es el mejor lugar para cortar
 
@@ -72,7 +72,7 @@ Las cuatro técnicas se construyeron por separado, sobre datos distintos y para 
 > **La métrica que se optimiza no es la métrica que decide.**
 
 - En **01**, el PR-AUC se satura en 1.0000 y deja de distinguir entre modelos — mientras el umbral calibrado por costo los sigue separando por un factor de 700x.
-- En **04**, el ROC-AUC dice que el autoencoder no supervisado es "casi tan bueno" como el XGBoost supervisado (0.931 contra 0.965). El PR-AUC dice que recupera menos de un tercio (0.242 contra 0.834). Los dos son correctos; solo uno sirve con una tasa de fraude del 0,172%.
+- En **04**, el ROC-AUC dice que el autoencoder no supervisado es "casi tan bueno" como el XGBoost supervisado (0.938 contra 0.965). El PR-AUC dice que recupera bastante menos de la mitad (0.318 contra 0.834). Los dos son correctos; solo uno sirve con una tasa de fraude del 0,172%.
 - En **03**, el ranking es bueno (ROC-AUC 0.893) pero el punto de operación que maximiza la precisión no está donde nadie lo buscaría.
 - En **02**, el umbral desplegado minimiza una función de costo explícita en pesos chilenos en vez de quedarse en 0,5 — y eso es lo que produce 0 falsas alarmas con recall 0,955.
 

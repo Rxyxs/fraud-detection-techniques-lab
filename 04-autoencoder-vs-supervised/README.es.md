@@ -83,10 +83,10 @@ fabricadas.
 
 | Métrica | Resultado | Qué significa |
 |---|---|---|
-| Salto arranque en frío → sistema maduro (PR-AUC) | 0,242 → **0,834** (3,4x) | Cuantifica la brecha real de madurez que el ROC-AUC solo esconde (0,931 vs. 0,965 se ve "casi tan bueno") |
+| Salto arranque en frío → sistema maduro (PR-AUC) | 0,318 → **0,834** (2,6x) | Cuantifica la brecha real de madurez que el ROC-AUC solo esconde (0,938 vs. 0,965 se ve "casi tan bueno") |
 | Recall de XGBoost a presupuesto de 100 alertas | **85,1%** del fraude total del test set, 63% precisión | El recall se estanca en el presupuesto 100-200 -- revisar más alertas mayormente agrega falsos positivos |
-| Recall del autoencoder al mismo presupuesto | 39,2% a 29% de precisión | El techo honesto solo-no-supervisado antes de que existan etiquetas |
-| Resultado del híbrido (XGBoost + feature del AE) | PR-AUC 0,829 vs. 0,834 (levemente peor) | Reportado como resultado negativo a propósito -- XGBoost ya extrae lo que el número único del AE resume |
+| Recall del autoencoder al mismo presupuesto | 41,9% a 31% de precisión | El techo honesto solo-no-supervisado antes de que existan etiquetas |
+| Resultado del híbrido (XGBoost + feature del AE) | PR-AUC 0,834 vs. 0,834 (sin cambio) | Reportado como resultado negativo a propósito -- XGBoost ya extrae lo que el número único del AE resume |
 | Dataset real | 284.807 transacciones, 492 fraudes confirmados (0,172%) | ULB/Worldline, publicado abiertamente, anonimizado vía PCA por los autores originales |
 
 ---
@@ -400,18 +400,18 @@ estimado.
 
 | Modelo | ROC-AUC | PR-AUC |
 |---|---:|---:|
-| Autoencoder (no supervisado, cero etiquetas usadas) | 0,931 | 0,242 |
+| Autoencoder (no supervisado, cero etiquetas usadas) | 0,938 | 0,318 |
 | **XGBoost (supervisado, etiquetas reales)** | **0,965** | **0,834** |
-| Híbrido (XGBoost + feature del autoencoder) | 0,969 | 0,829 |
+| Híbrido (XGBoost + feature del autoencoder) | 0,969 | 0,834 |
 
 ![Comparación de modelos](outputs/figures/comparacion_modelos.png)
 
 **[Gráfico interactivo: curvas ROC y PR, los cinco modelos](https://htmlpreview.github.io/?https://github.com/Rxyxs/fraud-detection-techniques-lab/blob/main/04-autoencoder-vs-supervised/outputs/interactive/roc_pr_comparison.html)** (`src/visualization/interactive_roc_pr.py`) — Autoencoder, VAE, Deep SVDD, XGBoost e Híbrido superpuestos sobre el mismo test set held-out; acercar en las esquinas de FPR bajo / precisión alta donde se ve la separación real entre modelos.
 
 El ROC-AUC por sí solo sugeriría que el autoencoder es "casi tan bueno"
-(0,931 vs. 0,965) — exactamente la lectura engañosa que advierte la §3.3.
+(0,938 vs. 0,965) — exactamente la lectura engañosa que advierte la §3.3.
 El PR-AUC cuenta la historia real: **pasar de cero etiquetas a etiquetas
-confirmadas reales es un salto de 3,4x en precisión promedio** (0,242 →
+confirmadas reales es un salto de 2,6x en precisión promedio** (0,318 →
 0,834).
 
 ## 7.3 Precisión/recall a un presupuesto de alerta realista
@@ -422,16 +422,16 @@ equivalentes sobre el mismo test set:
 
 | Presupuesto de alerta | Autoencoder precisión / recall | XGBoost precisión / recall |
 |---:|---:|---:|
-| 20 | 0,350 / 0,095 | **1,000 / 0,270** |
-| 50 | 0,380 / 0,257 | **0,960 / 0,649** |
-| 100 | 0,290 / 0,392 | **0,630 / 0,851** |
-| 200 | 0,190 / 0,514 | **0,315 / 0,851** |
-| 500 | 0,102 / 0,689 | 0,128 / 0,865 |
+| 20 | 0,550 / 0,149 | **1,000 / 0,270** |
+| 50 | 0,340 / 0,230 | **0,960 / 0,649** |
+| 100 | 0,310 / 0,419 | **0,630 / 0,851** |
+| 200 | 0,225 / 0,608 | **0,315 / 0,851** |
+| 500 | 0,108 / 0,730 | 0,128 / 0,865 |
 
 Con un presupuesto de 100 transacciones revisadas por período, el modelo
 supervisado captura el **85,1% de todo el fraude del test set** con 63% de
 precisión; el modelo no supervisado, con el mismo presupuesto de revisión,
-captura 39,2% con 29% de precisión. El recall de XGBoost **se estanca en
+captura 41,9% con 31% de precisión. El recall de XGBoost **se estanca en
 85,1% ya desde el presupuesto 100-200** — esencialmente todo el fraude
 recuperable en este test set ya está expuesto para entonces, y revisar más
 alertas mayormente suma falsos positivos.
@@ -451,8 +451,8 @@ débil que la supervisión directa una vez que existen etiquetas.
 ## 7.5 ¿Ayuda el híbrido? — una prueba real, reportada con honestidad
 
 Agregar el error de reconstrucción del autoencoder como feature extra de
-XGBoost subió el ROC-AUC marginalmente (0,965 → 0,969) pero **bajó
-levemente el PR-AUC** (0,834 → 0,829, Δ = −0,0047) — un empate técnico, no
+XGBoost subió el ROC-AUC marginalmente (0,965 → 0,969) y **dejó el PR-AUC
+sin cambio** (0,8338 → 0,8338, Δ = −0,00002) — un empate técnico, no
 una mejora. La explicación probable: XGBoost, con las 30 features PCA
 crudas disponibles directamente, ya extrae cualquier señal que el único
 número de error de reconstrucción del autoencoder resume; los dos enfoques
@@ -479,22 +479,34 @@ mismo test set (detalle completo y curvas PR en
 
 | Modelo | ROC-AUC | PR-AUC |
 |---|---:|---:|
-| Autoencoder (estándar) | 0,931 | 0,242 |
-| VAE | 0,947 | 0,515 |
-| **Deep SVDD** | 0,946 | **0,743** |
+| Autoencoder (estándar) | 0,938 | 0,318 |
+| VAE | 0,920 | 0,265 |
+| **Deep SVDD** | 0,935 | **0,765** |
 
-Ninguno de los dos resultados se asumió de antemano. **El PR-AUC de Deep
-SVDD (0,743) es aproximadamente 3x el del autoencoder estándar (0,242)** y
-se acerca notablemente al 0,834 supervisado de XGBoost (§7.2) *sin ver
-jamás una etiqueta de fraude* — abandonar por completo la reconstrucción y
-concentrar las transacciones normales en una hiperesfera resulta separar
-sustancialmente mejor el patrón de fraude de este dataset que aprender a
-reconstruirlo. El VAE queda entre ambos: su regularización KL produce una
-señal de anomalía más utilizable que el autoencoder simple (PR-AUC 0,515
-vs. 0,242), consistente con lo esperado en §3.5 (un espacio latente más
-suave y estructurado debería generalizar mejor a entradas atípicas), pero
-sin igualar el objetivo más ajustado y libre de reconstrucción de Deep
-SVDD.
+**Protocolo de entrenamiento** (`src/models/training.py`, compartido por las
+tres redes): cada una entrena al menos 100 épocas (máximo 300) solo con
+transacciones normales; desde ahí, early stopping corta cuando la loss de
+validación (solo normales) no mejora en 15 épocas, y se restauran los pesos
+de la mejor época. El estado completo se guarda en un checkpoint cada
+época, así que una corrida interrumpida retoma donde quedó. El autoencoder
+siguió mejorando hasta la época 285, el VAE se detuvo en la 167 (mejor 152)
+y Deep SVDD en la 100 (mejor 33).
+
+**El PR-AUC de Deep SVDD (0,765) es aproximadamente 2,4x el del autoencoder
+estándar (0,318)** y se acerca al 0,834 supervisado de XGBoost (§7.2) *sin
+ver jamás una etiqueta de fraude*: concentrar las transacciones normales en
+una hiperesfera separa el fraude de este dataset mucho mejor que aprender a
+reconstruirlo. Su loss de validación llega casi a cero en la época 33 (la
+red lleva las transacciones normales muy cerca del centro), por eso el
+mínimo de 100 épocas no le agrega nada.
+
+Entrenar más movió a los otros dos en direcciones opuestas. La versión
+anterior se detenía tras 8 épocas sin mejora, mucho antes de 100. Con el
+protocolo más largo el autoencoder mejora (PR-AUC 0,242 → 0,318) y el VAE
+empeora (0,515 → 0,265): mientras mejor reconstruye, mejor reconstruye
+también el fraude, y su ventaja anterior sobre el autoencoder simple venía
+en parte de detenerse temprano. El término KL del VAE no lo convierte en un
+mejor detector aquí.
 
 ![AE vs VAE vs Deep SVDD — Precision-Recall](outputs/figures/ae_vae_svdd_precision_recall.png)
 
@@ -509,58 +521,55 @@ monto total de fraude — el costo de **no usar ningún modelo**):
 
 | Modelo | Umbral óptimo | Alertas | TP / FP / FN | Costo total (USD) | Reducción vs. sin modelo |
 |---|---:|---:|---|---:|---:|
-| Autoencoder (estándar) | 1,1716 | 286 | 47 / 239 / 27 | $5.731,99 | 32,4% |
-| VAE | 2,4435 | 143 | 55 / 88 / 19 | $4.683,26 | 44,8% |
-| Deep SVDD | 0,000103 | 143 | 58 / 85 / 16 | $4.808,88 | 43,3% |
+| Autoencoder (estándar) | 1,5815 | 143 | 42 / 101 / 32 | $5.621,91 | 33,7% |
+| VAE | 1,0532 | 286 | 46 / 240 / 28 | $5.252,46 | 38,1% |
+| Deep SVDD | 0,000038 | 143 | 60 / 83 / 14 | $4.653,08 | 45,2% |
 | XGBoost (supervisado, referencia) | 0,2089 | 143 | 63 / 80 / 11 | $4.636,08 | **45,4%** |
-| Híbrido (referencia) | 0,2290 | 143 | 63 / 80 / 11 | $4.636,08 | 45,4% |
+| Híbrido (referencia) | 0,1903 | 143 | 63 / 80 / 11 | $4.636,08 | 45,4% |
 
 ![Costo vs. presupuesto de alertas](outputs/figures/ae_vae_svdd_cost_curves.png)
 
-El ranking por costo financiero refleja el ranking por PR-AUC — Deep SVDD
-y el VAE quedan ambos dentro de un ~4-6% de la reducción de costo de
-XGBoost, usando cero etiquetas de fraude, mientras el autoencoder estándar
-queda claramente atrás de ambos. Un detalle que vale la pena nombrar con
-honestidad: el presupuesto de alertas óptimo por costo cayó en
-**exactamente 143 alertas** para cuatro de los cinco modelos (VAE, Deep
-SVDD, XGBoost y el híbrido) — no fue diseñado así, es una consecuencia
-emergente de optimizar la misma matriz de costo real contra la misma
-distribución real de montos de fraude, entre modelos que rankean de forma
-similarmente buena los fraudes más grandes.
+El ranking por costo financiero refleja el ranking por PR-AUC. Deep SVDD
+queda a 0,2 puntos de la reducción de costo de XGBoost (45,2% vs. 45,4%)
+usando cero etiquetas de fraude; el VAE (38,1%) y el autoencoder estándar
+(33,7%) quedan atrás. El presupuesto de alertas óptimo por costo cayó en
+exactamente 143 alertas para cuatro de los cinco modelos (autoencoder, Deep
+SVDD, XGBoost y el híbrido), consecuencia de optimizar la misma matriz de
+costo contra los mismos montos de fraude, no algo fijado a mano.
 
 ---
 
 # 8. Conclusión
 
 - **La brecha entre "sin etiquetas" y "etiquetas confirmadas" es grande y
-  ahora está cuantificada, no solo afirmada**: PR-AUC 0,242 → 0,834, un
-  salto de 3,4x; a un presupuesto fijo de 100 alertas, la tasa de captura
-  pasa de 39,2% a 85,1%.
-- **El ROC-AUC habría escondido esta brecha** (0,931 vs. 0,965 parece una
+  ahora está cuantificada, no solo afirmada**: PR-AUC 0,318 → 0,834, un
+  salto de 2,6x; a un presupuesto fijo de 100 alertas, la tasa de captura
+  pasa de 41,9% a 85,1%.
+- **El ROC-AUC habría escondido esta brecha** (0,938 vs. 0,965 parece una
   diferencia menor) — una ilustración directa, trabajada, de por qué el
   PR-AUC y la precisión/recall por presupuesto son las métricas que
   importan bajo desbalance de clases extremo, no una advertencia abstracta.
 - **El autoencoder no supervisado no es inútil — es el punto de partida
   realista.** Todo sistema de fraude/LA empieza aquí, antes de que existan
   suficientes casos confirmados para entrenar algo supervisado; un PR-AUC
-  de 0,242 con una tasa base de fraude de 0,172% es una señal genuina y
+  de 0,318 con una tasa base de fraude de 0,172% es una señal genuina y
   utilizable (un ranking aleatorio puntuaría ≈0,0017), solo que mucho más
   débil que la supervisión.
 - **Combinar ambos no ayudó una vez que existen etiquetas** (§7.5) — un
   resultado negativo legítimo, reportado tal cual se encontró: las features
   crudas ya contienen lo que el score resumen del autoencoder agregaría.
-- **El techo de PR-AUC de 0,242 del autoencoder estándar era una elección
+- **El techo de PR-AUC de 0,318 del autoencoder estándar era una elección
   de modelado, no un límite duro para este conjunto de features**: Deep
-  SVDD por sí solo eleva el PR-AUC no supervisado a 0,743 — aproximadamente
-  3x — solo cambiando el objetivo de entrenamiento de reconstrucción a
+  SVDD por sí solo eleva el PR-AUC no supervisado a 0,765 — aproximadamente
+  2,4x — solo cambiando el objetivo de entrenamiento de reconstrucción a
   compacidad de hiperesfera, sin datos ni etiquetas adicionales (§7.7).
 - **Un umbral por percentil arbitrario deja dinero real sobre la mesa.**
   Optimizar el umbral de alerta contra una matriz de costo financiero
   explícita (§3.7, §7.8) en vez de una regla genérica tipo "marcar el 1%
   superior" es lo que convierte la capacidad de ranking cruda de cada
-  modelo en un punto de operación real y costeado — y los mejores modelos
-  no supervisados (VAE, Deep SVDD) quedan a un solo dígito porcentual de la
-  reducción de costo de XGBoost sin ninguna etiqueta de fraude confirmada.
+  modelo en un punto de operación real y costeado — y el mejor modelo no
+  supervisado (Deep SVDD) queda a 0,2 puntos de la reducción de costo de
+  XGBoost sin ninguna etiqueta de fraude confirmada.
 
 ## Trabajo futuro
 
