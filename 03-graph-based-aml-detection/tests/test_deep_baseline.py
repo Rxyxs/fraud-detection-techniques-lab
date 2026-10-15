@@ -129,3 +129,42 @@ def test_evaluate_score_returns_expected_keys():
         "precision_en_alertas", "recall_sobre_verdad_terreno",
     ):
         assert key in m
+
+
+def test_autoencoder_early_stopping_respects_minimum_and_restores_best_epoch():
+    from src.anomaly.deep_baseline import _train_autoencoder
+
+    X = _synthetic_tx_features().select(FEATURE_COLUMNS_TX).to_numpy().astype(float)
+    error, history = _train_autoencoder(X, "relu", epochs=400, min_epochs=120, patience=5, return_history=True)
+    assert history["epochs_run"] >= 120
+    assert history["best_epoch"] == int(np.argmin(history["val_loss"])) + 1
+    assert error.shape == (X.shape[0],)
+
+
+def test_autoencoder_resumes_from_checkpoint(tmp_path, monkeypatch):
+    import torch
+
+    from src.anomaly import deep_baseline as db
+
+    X = _synthetic_tx_features().select(FEATURE_COLUMNS_TX).to_numpy().astype(float)
+    kwargs = dict(epochs=40, min_epochs=40, patience=500)
+    reference = db._train_autoencoder(X, "gelu", **kwargs)
+
+    ckpt = tmp_path / "gelu.ckpt"
+    real_step = torch.optim.Adam.step
+    calls = {"n": 0}
+
+    def flaky_step(self, *args, **kw):
+        calls["n"] += 1
+        if calls["n"] > 25:  # se corta en la epoca 26; el ultimo checkpoint es la 20
+            raise KeyboardInterrupt
+        return real_step(self, *args, **kw)
+
+    monkeypatch.setattr(torch.optim.Adam, "step", flaky_step)
+    with pytest.raises(KeyboardInterrupt):
+        db._train_autoencoder(X, "gelu", checkpoint_path=ckpt, **kwargs)
+    monkeypatch.setattr(torch.optim.Adam, "step", real_step)
+
+    resumed, history = db._train_autoencoder(X, "gelu", checkpoint_path=ckpt, return_history=True, **kwargs)
+    assert history["epochs_run"] == 40
+    np.testing.assert_allclose(resumed, reference, rtol=1e-5, atol=1e-7)
