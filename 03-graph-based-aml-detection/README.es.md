@@ -503,38 +503,58 @@ comparativo en DuckDB (`outputs/model_comparison.duckdb`):
 - **Autoencoder PyTorch** (`deep_baseline.autoencoder_score`) — un MLP
   encoder/decoder simétrico pequeño entrenado sin etiquetas (reconstruye sus
   propias features estandarizadas), usando el error de reconstrucción (MSE)
-  como score de anomalía. Entrenado tres veces, misma arquitectura y
-  epochs, variando solo la función de activación: **ReLU, GELU, Swish (SiLU)**.
+  como score de anomalía. Entrenado tres veces, misma arquitectura,
+  variando solo la función de activación: **ReLU, GELU, Swish (SiLU)**. Un
+  15% aleatorio de las transacciones (sin mirar las etiquetas) se reserva
+  para medir el error de reconstrucción; cada red entrena al menos 100
+  épocas y desde ahí early stopping corta tras 50 épocas sin mejora y
+  restaura la mejor época. El estado se guarda en un checkpoint cada 10
+  épocas para retomar una corrida interrumpida.
 
 Con `contamination = 0.01` (mismo presupuesto que §7.4), de una corrida real:
 
 | Modelo | ROC-AUC | Average precision | Precisión en alertas | Recall sobre verdad terreno |
 |---|---:|---:|---:|---:|
-| **Ensamble de árboles (IForest+COPOD+ECOD)** | **0.908** | **0.404** | **0.638** | 0.273 |
-| Autoencoder (GELU) | 0.899 | 0.332 | 0.608 | 0.260 |
-| Autoencoder (ReLU) | 0.900 | 0.331 | 0.603 | 0.258 |
-| Autoencoder (Swish) | 0.899 | 0.329 | 0.603 | 0.258 |
+| **Ensamble de árboles (IForest+COPOD+ECOD)** | **0.908** | **0.404** | **0.638** | **0.273** |
+| Autoencoder (GELU), entrenado hasta converger | 0.848 | 0.163 | 0.248 | 0.106 |
+| Autoencoder (Swish), entrenado hasta converger | 0.831 | 0.139 | 0.251 | 0.107 |
+| Autoencoder (ReLU), entrenado hasta converger | 0.772 | 0.096 | 0.183 | 0.078 |
 | Baseline estadístico (z-score/MAD) | 0.662 | 0.034 | 0.000 | 0.000 |
 
 ![Comparativo de modelos ROC-AUC](outputs/figures/comparacion_modelos_auc.png)
 ![Curvas ROC comparativas](outputs/figures/comparacion_modelos_roc.png)
 ![Comparativo de activaciones del autoencoder](outputs/figures/comparacion_activaciones_autoencoder.png)
 
-**Hallazgos.** El ensamble de árboles sigue siendo el modelo más fuerte
-sobre este conjunto de features — le gana al autoencoder en todas las
-métricas, y por un margen amplio en precisión (63.8% vs. ~60%). El baseline
-estadístico interpretable es un piso real, no un espantapájaros: ROC-AUC
-0.662 muestra que las features crudas sí llevan señal, pero una suma
-aditiva de z-scores no puede capturar las interacciones multivariadas
-(p.ej. ratio de paso alto *combinado con* una cuenta recién abierta) que sí
-explotan tanto el ensamble como el autoencoder — precisamente por qué este
-proyecto no se detiene en el baseline. **La elección de activación apenas
-mueve la aguja del autoencoder** (ROC-AUC dentro de 0.001 entre sí para
-ReLU/GELU/Swish): con esta dimensionalidad de features (13 features, cuello
-de botella 16→4) domina la arquitectura y el objetivo de reconstrucción, no
-la no-linealidad. Es en sí mismo un hallazgo negativo útil — indica que el
-techo del autoencoder aquí es de capacidad/features, no de tuning de
-activación.
+**Lo que reveló entrenar más.** La versión anterior entrenaba 60 épocas
+full-batch y reportaba ROC-AUC 0.90 para las tres activaciones. En ese punto
+la red casi no había aprendido nada: su MSE de validación era 0.92, frente a
+1.0 por no reconstruir nada, y su score correlacionaba 0.998 con la simple
+distancia cuadrática de cada transacción a la media de las features
+(ROC-AUC 0.896 por sí sola). El resultado del "autoencoder" era un baseline
+de distancia a la media. `python -m src.anomaly.autoencoder_epoch_sweep`
+entrena cada red un número fijo de épocas y la evalúa contra las etiquetas:
+
+| Épocas | ReLU ROC-AUC / AP | GELU ROC-AUC / AP | Swish ROC-AUC / AP | MSE validación (GELU) |
+|---:|---|---|---|---:|
+| 60 | 0.900 / 0.331 | 0.899 / 0.332 | 0.898 / 0.328 | 0.92 |
+| 100 | 0.899 / 0.336 | 0.902 / 0.347 | 0.901 / 0.346 | 0.79 |
+| 200 | 0.844 / 0.351 | **0.910 / 0.433** | 0.908 / 0.415 | 0.54 |
+| 500 | 0.837 / 0.343 | 0.879 / 0.336 | 0.857 / 0.332 | 0.28 |
+| 2.000 | 0.772 / 0.096 | 0.848 / 0.163 | 0.831 / 0.139 | 0.06 |
+
+La detección toca su máximo cerca de las 200 épocas (GELU 0.910 / 0.433, a la
+par del ensamble de árboles) y después cae: mientras mejor reconstruye la red
+las transacciones en general, mejor reconstruye también las ilícitas, y el
+error de reconstrucción deja de separarlas. Ese máximo no se puede elegir
+sin las etiquetas, así que la tabla de arriba reporta la corrida sin
+etiquetas (entrenada hasta converger) y el barrido queda como diagnóstico.
+Dos conclusiones: un autoencoder de reconstrucción no es un detector
+confiable sobre estas 13 features, y el ensamble de árboles sigue siendo el
+modelo más fuerte. El baseline estadístico interpretable es un piso real:
+ROC-AUC 0.662 muestra que las features crudas llevan señal, pero una suma
+aditiva de z-scores no captura las interacciones multivariadas (p.ej. ratio
+de paso alto *combinado con* una cuenta recién abierta) que explota el
+ensamble.
 
 ---
 

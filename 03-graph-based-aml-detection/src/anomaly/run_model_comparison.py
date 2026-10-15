@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from data.synthetic_generator import END_DATE, OUT_DIR as DATA_DIR, UMBRAL_ESTRUCTURACION_CLP
-from src.anomaly.deep_baseline import ACTIVATIONS, autoencoder_score, evaluate_score, statistical_baseline_score
+from src.anomaly.deep_baseline import ACTIVATIONS, CHECKPOINT_DIR, MAX_EPOCHS, autoencoder_score, evaluate_score, statistical_baseline_score
 from src.anomaly.model_comparison_store import persist_comparison
 from src.anomaly.transaction_scorer import build_transaction_features, run_transaction_ensemble
 from src.graph.graph_features import build_feature_table
@@ -47,7 +47,7 @@ DB_PATH = OUTPUTS_DIR / "model_comparison.duckdb"
 CONTAMINACION_TX = 0.01
 
 
-def main(contamination: float = CONTAMINACION_TX, epochs: int = 60) -> dict:
+def main(contamination: float = CONTAMINACION_TX, epochs: int = MAX_EPOCHS) -> dict:
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
     accounts = pl.read_parquet(DATA_DIR / "accounts.parquet")
@@ -79,7 +79,8 @@ def main(contamination: float = CONTAMINACION_TX, epochs: int = 60) -> dict:
     metricas_por_activacion: dict[str, dict] = {}
     for activacion in ACTIVATIONS:
         print(f"(c) Autoencoder PyTorch, activacion={activacion}...")
-        scored_ae = autoencoder_score(tx_features, activation=activacion, contamination=contamination, epochs=epochs)
+        scored_ae = autoencoder_score(tx_features, activation=activacion, contamination=contamination, epochs=epochs,
+                                       checkpoint_dir=CHECKPOINT_DIR)
         score_col, alerta_col = f"score_autoencoder_{activacion}", f"alerta_autoencoder_{activacion}"
         m = evaluate_score(scored_ae, score_col, alerta_col)
         nombre = f"autoencoder_{activacion}"

@@ -479,36 +479,57 @@ DuckDB (`outputs/model_comparison.duckdb`):
 - **PyTorch autoencoder** (`deep_baseline.autoencoder_score`) — a small
   symmetric MLP encoder/decoder trained with no labels (reconstructs its own
   standardized features), using reconstruction MSE as the anomaly score.
-  Trained three times, identical architecture and epochs, varying only the
-  activation function: **ReLU, GELU, Swish (SiLU)**.
+  Trained three times, identical architecture, varying only the activation
+  function: **ReLU, GELU, Swish (SiLU)**. A random 15% of the transactions
+  (labels never looked at) is held out to measure reconstruction error; each
+  network trains at least 100 epochs, then early stopping ends the run after
+  50 epochs without improvement and restores the best epoch. The state is
+  checkpointed every 10 epochs so an interrupted run resumes.
 
 At `contamination = 0.01` (same budget as §7.4), from an actual run:
 
 | Model | ROC-AUC | Average precision | Precision on alerts | Recall on ground truth |
 |---|---:|---:|---:|---:|
-| **Tree ensemble (IForest+COPOD+ECOD)** | **0.908** | **0.404** | **0.638** | 0.273 |
-| Autoencoder (GELU) | 0.899 | 0.332 | 0.608 | 0.260 |
-| Autoencoder (ReLU) | 0.900 | 0.331 | 0.603 | 0.258 |
-| Autoencoder (Swish) | 0.899 | 0.329 | 0.603 | 0.258 |
+| **Tree ensemble (IForest+COPOD+ECOD)** | **0.908** | **0.404** | **0.638** | **0.273** |
+| Autoencoder (GELU), trained to convergence | 0.848 | 0.163 | 0.248 | 0.106 |
+| Autoencoder (Swish), trained to convergence | 0.831 | 0.139 | 0.251 | 0.107 |
+| Autoencoder (ReLU), trained to convergence | 0.772 | 0.096 | 0.183 | 0.078 |
 | Statistical baseline (z-score/MAD) | 0.662 | 0.034 | 0.000 | 0.000 |
 
 ![Model comparison ROC-AUC](outputs/figures/comparacion_modelos_auc.png)
 ![Model comparison ROC curves](outputs/figures/comparacion_modelos_roc.png)
 ![Autoencoder activation comparison](outputs/figures/comparacion_activaciones_autoencoder.png)
 
-**Findings.** The tree ensemble remains the strongest model on this feature
-set — it still edges out the autoencoder on every metric, and by a wide
-margin on precision (63.8% vs. ~60%). The interpretable statistical baseline
-is a real floor, not a strawman: ROC-AUC 0.662 shows the raw features do
-carry signal, but naive additive z-scores can't capture the multivariate
-interactions (e.g., high pass-through ratio *combined with* a brand-new
-account) that both the ensemble and the autoencoder exploit — precisely why
-this project doesn't stop at the baseline. **Activation choice barely moves
-the autoencoder's needle** (ROC-AUC within 0.001 of each other across
-ReLU/GELU/Swish): at this feature dimensionality (13 features, a 16→4
-bottleneck) the architecture and reconstruction objective dominate, not the
-nonlinearity. This is itself a useful negative result — it says the
-autoencoder's ceiling here is capacity/features, not activation tuning.
+**What training longer revealed.** The previous version trained 60
+full-batch epochs and reported ROC-AUC 0.90 for all three activations. At
+that point the network had barely learned anything: its validation MSE was
+0.92, against 1.0 for reconstructing nothing at all, and its score
+correlated 0.998 with the plain squared distance of each transaction to the
+feature means (ROC-AUC 0.896 on its own). The "autoencoder" result was a
+distance-to-mean baseline. `python -m src.anomaly.autoencoder_epoch_sweep`
+trains each network for a fixed number of epochs and scores it against the
+labels:
+
+| Epochs | ReLU ROC-AUC / AP | GELU ROC-AUC / AP | Swish ROC-AUC / AP | Validation MSE (GELU) |
+|---:|---|---|---|---:|
+| 60 | 0.900 / 0.331 | 0.899 / 0.332 | 0.898 / 0.328 | 0.92 |
+| 100 | 0.899 / 0.336 | 0.902 / 0.347 | 0.901 / 0.346 | 0.79 |
+| 200 | 0.844 / 0.351 | **0.910 / 0.433** | 0.908 / 0.415 | 0.54 |
+| 500 | 0.837 / 0.343 | 0.879 / 0.336 | 0.857 / 0.332 | 0.28 |
+| 2,000 | 0.772 / 0.096 | 0.848 / 0.163 | 0.831 / 0.139 | 0.06 |
+
+Detection peaks around 200 epochs (GELU 0.910 / 0.433, level with the tree
+ensemble) and then falls: the better the network reconstructs transactions
+in general, the better it also reconstructs the illicit ones, and the
+reconstruction error stops separating them. That peak cannot be chosen
+without the labels, so the table above reports the label-free run (trained
+to convergence) and the sweep stays a diagnostic. Two conclusions: a
+reconstruction autoencoder is not a reliable detector on these 13 features,
+and the tree ensemble remains the strongest model. The interpretable
+statistical baseline is a real floor: ROC-AUC 0.662 shows the raw features
+carry signal, but additive z-scores miss the multivariate interactions
+(e.g., a high pass-through ratio *combined with* a brand-new account) the
+ensemble exploits.
 
 ---
 
