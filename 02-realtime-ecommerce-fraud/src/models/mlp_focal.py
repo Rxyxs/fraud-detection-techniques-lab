@@ -13,12 +13,20 @@ contributes a single ``autoencoder_score`` feature. This module is a
 - A comparison across three activation functions (ReLU, GELU, Swish/SiLU) on
   identical data/splits/hyperparameters, so the choice is evidence-based
   rather than a default.
+- At least 100 epochs, then early stopping on the time-based validation
+  split with the best epoch restored, and per-epoch checkpoints so an
+  interrupted run resumes.
 
 Same feature matrix (``FULL_FEATURE_COLUMNS`` from ``train.py``, including
 the autoencoder anomaly score) and same ``evaluate()`` cost-sensitive metrics
 as the other two approaches, so all three are directly comparable.
 """
 from __future__ import annotations
+
+import copy
+import hashlib
+import json
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -72,49 +80,111 @@ def _to_tensor(x: np.ndarray) -> torch.Tensor:
     return torch.tensor(np.asarray(x, dtype=np.float32))
 
 
+MIN_EPOCHS = 100  # no network stops before 100 epochs
+MAX_EPOCHS = 300
+PATIENCE = 15     # epochs without validation improvement before stopping (only after the minimum)
+LR_PATIENCE = 5
+
+
+def _fingerprint(*arrays, **config) -> str:
+    """Hash of data + config: a checkpoint is only resumed when it matches."""
+    h = hashlib.sha256()
+    for a in arrays:
+        h.update(np.ascontiguousarray(np.asarray(a, dtype=np.float32)).tobytes())
+    h.update(json.dumps(config, sort_keys=True).encode())
+    return h.hexdigest()[:16]
+
+
 def train_one_activation(
     activation: str,
     X_train: np.ndarray,
     y_train: np.ndarray,
     X_val: np.ndarray,
     y_val: np.ndarray,
-    n_epochs: int = 30,
+    n_epochs: int = MAX_EPOCHS,
     batch_size: int = 1024,
     lr: float = 1e-3,
     seed: int = 42,
+    min_epochs: int = MIN_EPOCHS,
+    patience: int = PATIENCE,
+    checkpoint_path: Path | None = None,
 ) -> tuple[FraudMLP, list[dict]]:
+    """Trains at least ``min_epochs`` epochs (or ``n_epochs`` if smaller), then
+    early-stops once validation loss has not improved for ``patience`` epochs
+    and restores the best epoch's weights (flagged ``is_best`` in the
+    history). The learning rate halves when validation stalls. With
+    ``checkpoint_path`` the full state is saved every epoch (atomic write), so
+    an interrupted run resumes where it stopped."""
     torch.manual_seed(seed)
     model = FraudMLP(n_features=X_train.shape[1], activation=activation)
     criterion = FocalLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=LR_PATIENCE)
 
     train_ds = TensorDataset(_to_tensor(X_train), _to_tensor(y_train))
-    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-
+    generator = torch.Generator()
+    loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=generator)
     X_val_t, y_val_t = _to_tensor(X_val), _to_tensor(y_val)
-    history = []
-    for epoch in range(n_epochs):
+
+    fp = _fingerprint(X_train, y_train, X_val, y_val, activation=activation, n_epochs=n_epochs,
+                      batch_size=batch_size, lr=lr, seed=seed, min_epochs=min_epochs, patience=patience)
+    state = {"epoch": 0, "history": [], "best_val": float("inf"), "best_epoch": 0, "best_state": None,
+             "bad_epochs": 0, "done": False}
+    if checkpoint_path is not None and Path(checkpoint_path).exists():
+        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        if ckpt.get("fingerprint") == fp:
+            model.load_state_dict(ckpt["model"])
+            optimizer.load_state_dict(ckpt["optimizer"])
+            scheduler.load_state_dict(ckpt["scheduler"])
+            state = ckpt["state"]
+
+    def save_checkpoint() -> None:
+        if checkpoint_path is None:
+            return
+        path = Path(checkpoint_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        torch.save({"fingerprint": fp, "model": model.state_dict(), "optimizer": optimizer.state_dict(),
+                    "scheduler": scheduler.state_dict(), "state": state}, tmp)
+        tmp.replace(path)
+
+    while not state["done"] and state["epoch"] < n_epochs:
+        generator.manual_seed(seed + state["epoch"])  # same batch order when resuming
+        torch.manual_seed(seed + 10_000 + state["epoch"])  # reproducible dropout masks
         model.train()
         epoch_loss, n_batches = 0.0, 0
         for xb, yb in loader:
             optimizer.zero_grad()
-            logits = model(xb)
-            loss = criterion(logits, yb)
+            loss = criterion(model(xb), yb)
             loss.backward()
             optimizer.step()
             epoch_loss += loss.item()
             n_batches += 1
+        state["epoch"] += 1
 
         model.eval()
         with torch.no_grad():
-            val_logits = model(X_val_t)
-            val_loss = criterion(val_logits, y_val_t).item()
-
-        history.append({
-            "epoch": epoch + 1,
+            val_loss = criterion(model(X_val_t), y_val_t).item()
+        scheduler.step(val_loss)
+        state["history"].append({
+            "epoch": state["epoch"],
             "train_loss": epoch_loss / max(n_batches, 1),
             "val_loss": val_loss,
         })
+        if val_loss < state["best_val"] - 1e-7:
+            state.update(best_val=val_loss, best_epoch=state["epoch"], bad_epochs=0,
+                         best_state=copy.deepcopy(model.state_dict()))
+        else:
+            state["bad_epochs"] += 1
+        if state["epoch"] >= min(min_epochs, n_epochs) and state["bad_epochs"] >= patience:
+            state["done"] = True
+        save_checkpoint()
+
+    if state["best_state"] is not None:
+        model.load_state_dict(state["best_state"])
+    state["done"] = True
+    save_checkpoint()
+    history = [dict(row, is_best=row["epoch"] == state["best_epoch"]) for row in state["history"]]
     return model, history
 
 
@@ -129,16 +199,21 @@ def compare_activations(
     y_train: np.ndarray,
     X_val: np.ndarray,
     y_val: np.ndarray,
-    n_epochs: int = 30,
+    n_epochs: int = MAX_EPOCHS,
     seed: int = 42,
-) -> tuple[dict, dict, dict]:
-    """Trains one MLP per activation function on identical data/epochs and
-    returns (models, histories) keyed by activation name, so the caller can
-    evaluate every variant with the shared ``evaluate()`` cost function."""
+    min_epochs: int = MIN_EPOCHS,
+    patience: int = PATIENCE,
+    checkpoint_dir: Path | None = None,
+) -> tuple[dict, dict]:
+    """Trains one MLP per activation function on identical data and returns
+    (models, histories) keyed by activation name, each model holding the
+    weights of its best validation epoch."""
     models, histories = {}, {}
     for activation in ACTIVATIONS:
+        ckpt = None if checkpoint_dir is None else Path(checkpoint_dir) / f"mlp_focal_{activation}.ckpt"
         model, history = train_one_activation(
-            activation, X_train, y_train, X_val, y_val, n_epochs=n_epochs, seed=seed
+            activation, X_train, y_train, X_val, y_val, n_epochs=n_epochs, seed=seed,
+            min_epochs=min_epochs, patience=patience, checkpoint_path=ckpt,
         )
         models[activation] = model
         histories[activation] = history

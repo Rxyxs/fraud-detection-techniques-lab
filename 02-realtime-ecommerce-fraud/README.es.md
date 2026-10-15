@@ -270,7 +270,7 @@ comparables sin ningún atajo metodológico que favorezca a uno sobre otro:
    PyTorch entrenado con **Focal Loss** (en vez de BCE plana, para
    concentrar el gradiente en los casos de fraude difíciles de separar bajo
    ~99% de desbalance), comparado entre activaciones **ReLU, GELU y
-   Swish/SiLU** sobre los mismos datos/épocas. Es un *segundo* uso
+   Swish/SiLU** sobre los mismos datos, cada una entrenada al menos 100 épocas con early stopping. Es un *segundo* uso
    independiente de PyTorch en este repo junto al autoencoder no supervisado
    (`autoencoder.py`) — el autoencoder nunca ve las etiquetas de fraude, este
    MLP se entrena directamente sobre ellas.
@@ -287,22 +287,31 @@ re-parsear JSON.
 | Ensemble de árboles | Solo CatBoost | 1,000 | 0,945 | 0,972 | 0,99990 | 0,9931 | 34.727.584 |
 | Ensemble de árboles | Solo XGBoost | 0,982 | 0,973 | 0,977 | 0,99989 | 0,9931 | 35.309.557 |
 | Ensemble de árboles | **Ensemble (en producción)** | 1,000 | 0,955 | 0,977 | 0,99989 | 0,9934 | **35.309.623** |
-| Deep learning | MLP + Focal Loss (ReLU) | 0,187 | 0,982 | 0,313 | 0,9975 | 0,894 | 34.273.989 |
-| Deep learning | MLP + Focal Loss (GELU) | 0,752 | 0,936 | 0,834 | 0,9990 | 0,907 | 33.889.776 |
-| Deep learning | MLP + Focal Loss (Swish) | 0,864 | 0,927 | 0,895 | 0,9980 | 0,916 | 32.722.146 |
+| Deep learning | MLP + Focal Loss (ReLU) | 0,910 | 0,918 | 0,914 | 0,9995 | 0,942 | 32.550.751 |
+| Deep learning | MLP + Focal Loss (GELU) | 0,926 | 0,909 | 0,917 | 0,9998 | 0,971 | 33.515.020 |
+| Deep learning | MLP + Focal Loss (Swish) | 0,909 | 0,909 | 0,909 | 0,9997 | 0,967 | 33.217.802 |
 
 Cada fila usa su propio umbral ajustado en validación, minimizando costo (no
-son comparables con un corte compartido de 0,5). Dos observaciones destacan:
-la precisión mucho más baja del baseline logístico confirma que este
-problema realmente necesita fronteras de decisión no lineales (las clases
-fraude/legítimo no son linealmente separables en este espacio de atributos);
-y entre activaciones, el recall crudo de ReLU es engañoso — su costo de
-negocio es *peor* que GELU/Swish porque logra ese recall con 471 falsas
-alarmas (CLP 1.413.000 en costo de revisión), mientras que Swish alcanza el
-mejor balance precisión/F1 de las tres variantes de MLP con muchas menos
-falsas alarmas. Ninguna variante de MLP supera la precisión casi perfecta
-del ensemble de árboles en este dataset, que es exactamente por qué el
-ensemble sigue siendo el modelo desplegado.
+son comparables con un corte compartido de 0,5). La precisión mucho más baja
+del baseline logístico confirma que este problema realmente necesita
+fronteras de decisión no lineales.
+
+**Protocolo de entrenamiento del MLP.** Cada red entrena al menos 100 épocas
+(máximo 300) sobre el train remuestreado; desde ahí, early stopping corta
+cuando la focal loss en el split de validación temporal no mejora en 15
+épocas, y se restauran los pesos de la mejor época. La tasa de aprendizaje
+baja a la mitad cuando se estanca y el estado completo se guarda en un
+checkpoint cada época, así que una corrida interrumpida retoma donde quedó.
+La activación se elige con la loss de validación (ReLU, mejor época 41; GELU
+93; Swish 59), no con el ROC-AUC de test como antes.
+
+Frente a la corrida anterior de 12 épocas fijas, las tres activaciones
+convergen al mismo lugar: F1 0,91-0,92 en las tres (ReLU tenía 0,31, con 471
+falsas alarmas) y PR-AUC 0,94-0,97 (antes 0,89-0,92). El ahorro en CLP no
+sube en todas, porque cada umbral ahora cambia menos falsas alarmas por
+algunos fraudes más no detectados: GELU ahorra CLP 33,5 millones, Swish 33,2 y
+ReLU 32,6. Ninguna alcanza la precisión casi perfecta del ensemble de
+árboles, que es por qué el ensemble sigue siendo el modelo desplegado.
 
 Vista animada de la pérdida de validación avanzando época a época para cada activación:
 

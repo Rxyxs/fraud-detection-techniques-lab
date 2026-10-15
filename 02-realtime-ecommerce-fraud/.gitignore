@@ -15,6 +15,7 @@ outputs/models/*.cbm
 outputs/models/*.json
 outputs/models/*.joblib
 outputs/models/*.pt
+outputs/models/checkpoints/
 outputs/reports/*.json
 data/processed/*.duckdb
 !data/raw/.gitkeep
