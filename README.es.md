@@ -1,4 +1,4 @@
-[ 🇺🇸 [Read in English](README.md) ] | [ 🇨🇱 Español ]
+[[English](README.md) ] | [Español ]
 
 # Laboratorio de Técnicas de Detección de Fraude
 
