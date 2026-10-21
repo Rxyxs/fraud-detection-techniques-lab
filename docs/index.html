@@ -106,8 +106,8 @@
     <tr><td>LogReg + SMOTE</td><td>0.9942</td><td>0.9950</td><td>257,950</td><td>134,440</td><td>47.9%</td></tr>
     <tr><td>CatBoost</td><td>1.0000</td><td>0.9999</td><td>930</td><td>770</td><td>17.2%</td></tr>
     <tr><td>XGBoost</td><td>1.0000</td><td>1.0000</td><td>470</td><td>260</td><td>44.7%</td></tr>
-    <tr><td><strong>XGBoost, Optuna-tuned (30 trials)</strong></td><td>—</td><td>0.999988</td><td>—</td><td><strong>180</strong></td><td>—</td></tr>
-    <tr><td>MLP + Focal Loss</td><td>1.0000</td><td>1.0000</td><td>1,430</td><td>1,150</td><td>19.6%</td></tr>
+    <tr><td>XGBoost, Optuna-tuned (30 trials)</td><td>—</td><td>0.999988</td><td>—</td><td>180</td><td>—</td></tr>
+    <tr><td><strong>MLP + Focal Loss (early stopping, min 100 epochs)</strong></td><td>1.0000</td><td>1.0000</td><td>310</td><td><strong>160</strong></td><td>48.4%</td></tr>
   </table>
   <p style="color:var(--muted); font-size:0.9rem;">Business cost = 100 units per undetected fraud (false negative)
   + 10 units per legitimate transaction wrongly flagged (false positive).</p>

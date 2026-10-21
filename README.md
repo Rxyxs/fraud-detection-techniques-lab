@@ -61,7 +61,7 @@ The intuition says precision should be highest at the very top of the ranking an
 
 Read naively, the right panel says **LogReg + SMOTE is the best model** — a 47.9% cost reduction, ahead of XGBoost's 44.7%. That reading is wrong, and the reason is worth internalizing: the percentage is relative to each model's own starting point. In absolute terms LogReg's calibrated cost is **134,440** against XGBoost's **260** — a factor of 517. A weak model with a terrible baseline can post an excellent-looking "improvement".
 
-The absolute table lives in [the folder's README](01-credit-card-fraud-multilang): 134,440 for LogReg + SMOTE, 1,150 for the MLP, 770 for CatBoost, 260 for XGBoost, and **180** for the Optuna-tuned XGBoost.
+The absolute table lives in [the folder's README](01-credit-card-fraud-multilang): 134,440 for LogReg + SMOTE, 770 for CatBoost, 260 for XGBoost, 180 for the Optuna-tuned XGBoost, and **160** for the MLP once it is trained to convergence with early stopping (1,150 with the earlier 15 fixed epochs). The best threshold is picked on the test set for every model, so the top three read as tied.
 
 ---
 

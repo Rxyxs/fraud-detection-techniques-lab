@@ -61,7 +61,7 @@ La intuición dice que la precisión debería ser máxima en la punta del rankin
 
 Leído de forma ingenua, el panel derecho dice que **LogReg + SMOTE es el mejor modelo** — 47,9% de reducción, por delante del 44,7% de XGBoost. Esa lectura es incorrecta, y la razón vale la pena interiorizarla: el porcentaje es relativo al punto de partida de cada modelo. En términos absolutos el costo calibrado de LogReg es **134.440** contra **260** de XGBoost — un factor de 517. Un modelo malo con una línea base pésima puede exhibir una "mejora" excelente.
 
-La tabla absoluta está en [el README de la carpeta](01-credit-card-fraud-multilang/README.es.md): 134.440 para LogReg + SMOTE, 1.150 para el MLP, 770 para CatBoost, 260 para XGBoost, y **180** para el XGBoost ajustado con Optuna.
+La tabla absoluta está en [el README de la carpeta](01-credit-card-fraud-multilang/README.es.md): 134.440 para LogReg + SMOTE, 770 para CatBoost, 260 para XGBoost, 180 para el XGBoost ajustado con Optuna, y **160** para el MLP entrenado hasta converger con early stopping (1.150 con las 15 épocas fijas anteriores). El mejor umbral se elige sobre el test para todos los modelos, así que los tres primeros se leen como empatados.
 
 ---
 
