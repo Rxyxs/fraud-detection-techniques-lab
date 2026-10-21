@@ -67,3 +67,47 @@ def test_compare_activations_returns_all_three_and_separates_easy_data():
         proba = predict_proba(model, X_val)
         assert proba.shape == (len(X_val),)
         assert roc_auc_score(y_val, proba) > 0.8
+
+
+def test_early_stopping_respects_minimum_epochs_and_marks_best_epoch():
+    X_train, y_train, X_val, y_val = _split(_make_synthetic_data(n=600, seed=3))
+    _model, history = train_one_activation("relu", X_train, y_train, X_val, y_val,
+                                           n_epochs=60, min_epochs=20, patience=2, seed=3)
+    assert len(history) >= 20
+    best = [h for h in history if h["is_best"]]
+    assert len(best) == 1 and best[0]["val_loss"] == min(h["val_loss"] for h in history)
+
+
+def test_interrupted_training_resumes_from_checkpoint(tmp_path, monkeypatch):
+    import pytest
+
+    X_train, y_train, X_val, y_val = _split(_make_synthetic_data(n=600, seed=4))
+    kwargs = dict(n_epochs=6, min_epochs=6, patience=50, batch_size=128, seed=4)
+    reference, ref_history = train_one_activation("gelu", X_train, y_train, X_val, y_val, **kwargs)
+
+    ckpt = tmp_path / "gelu.ckpt"
+    real_step = torch.optim.AdamW.step
+    calls = {"n": 0}
+    n_batches = -(-len(X_train) // 128)
+
+    def flaky_step(self, *args, **kw):
+        calls["n"] += 1
+        if calls["n"] > n_batches * 3:  # cut during epoch 4
+            raise KeyboardInterrupt
+        return real_step(self, *args, **kw)
+
+    monkeypatch.setattr(torch.optim.AdamW, "step", flaky_step)
+    with pytest.raises(KeyboardInterrupt):
+        train_one_activation("gelu", X_train, y_train, X_val, y_val, checkpoint_path=ckpt, **kwargs)
+    monkeypatch.setattr(torch.optim.AdamW, "step", real_step)
+
+    resumed, history = train_one_activation("gelu", X_train, y_train, X_val, y_val, checkpoint_path=ckpt, **kwargs)
+    assert [h["val_loss"] for h in history] == pytest.approx([h["val_loss"] for h in ref_history], rel=1e-5)
+    for a, b in zip(reference.state_dict().values(), resumed.state_dict().values()):
+        assert torch.allclose(a.float(), b.float(), atol=1e-6)
+
+
+def _split(data, frac=0.8):
+    X, y = data
+    cut = int(len(X) * frac)
+    return X[:cut], y[:cut], X[cut:], y[cut:]

@@ -328,7 +328,8 @@ def main():
     y_train_dl = y_train_res.astype(np.float32)
 
     mlp_models, mlp_histories = compare_activations(
-        X_train_dl, y_train_dl, X_val_dl, y_val.astype(np.float32), n_epochs=12, seed=SEED
+        X_train_dl, y_train_dl, X_val_dl, y_val.astype(np.float32), seed=SEED,
+        checkpoint_dir=MODELS_DIR / "checkpoints",
     )
     mlp_metrics = {}
     for activation, model in mlp_models.items():
@@ -338,7 +339,14 @@ def main():
         mlp_metrics[activation] = evaluate(y_test, test_proba, test_df["amount_clp"].to_numpy(), act_threshold)
         print(f"  mlp[{activation}]: recall={mlp_metrics[activation]['recall']:.3f}, roc_auc={mlp_metrics[activation]['roc_auc']:.5f}")
 
-    best_activation = max(mlp_metrics, key=lambda a: mlp_metrics[a]["roc_auc"])
+    # Chosen on the validation split's best focal loss, not on test ROC-AUC: picking by test would make
+    # the test set part of model selection.
+    best_val_loss = {a: min(h["val_loss"] for h in mlp_histories[a]) for a in mlp_histories}
+    for activation, history in mlp_histories.items():
+        best = next(h for h in history if h["is_best"])
+        print(f"  mlp[{activation}]: best epoch {best['epoch']} of {len(history)}, val focal loss {best['val_loss']:.6f}")
+    best_activation = min(best_val_loss, key=best_val_loss.get)
+    print(f"  best activation (validation): {best_activation}")
     best_mlp_model = mlp_models[best_activation]
     best_mlp_proba = mlp_predict_proba(best_mlp_model, X_test_dl)
     torch.save(best_mlp_model.state_dict(), MODELS_DIR / "mlp_focal_best.pt")
