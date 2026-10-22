@@ -35,5 +35,10 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt pytest
 
+      # The API and latency tests in 02 load the trained artifacts, which are not versioned.
+      - name: Train the models the API tests load
+        if: matrix.technique == '02-realtime-ecommerce-fraud'
+        run: python run_pipeline.py
+
       - name: Run test suite
         run: pytest tests/ -q
