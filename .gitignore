@@ -8,3 +8,7 @@ __pycache__/
 # language as HTML instead of the real Python code. Regenerate locally from
 # each module's source script.
 **/outputs/interactive/
+
+# Real datasets downloaded from Kaggle (not redistributable, re-downloadable)
+02-realtime-ecommerce-fraud/data/raw/ieee/
+03-graph-based-aml-detection/data/raw/elliptic/

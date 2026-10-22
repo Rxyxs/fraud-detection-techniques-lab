@@ -533,6 +533,24 @@ ensemble exploits.
 
 ---
 
+## 7.7 The same ensemble on a real transaction graph — Elliptic
+
+`src/realdata_elliptic.py` runs the same unsupervised ensemble (IForest + COPOD + ECOD, standardized and averaged) and the same graph metrics (`compute_graph_metrics`, every edge weighted 1 because no amounts are published) on the **Elliptic dataset** (Weber et al. 2019, Kaggle `ellipticco/elliptic-data-set`): 203,769 real Bitcoin transactions linked by 234,355 payment flows over 49 time steps. 4,545 are labeled illicit (scams, malware, ransomware, Ponzi schemes), 42,019 licit, the rest unknown. Scores are evaluated on the labeled transactions only.
+
+| Method | ROC-AUC | Average precision |
+|---|---:|---:|
+| Synthetic network, account level (§7.2) | 0.893 | 0.353 |
+| **Unsupervised ensemble, graph metrics** | **0.332** | 0.069 |
+| **Unsupervised ensemble, Elliptic's 93 local features** | **0.170** | 0.056 |
+| Unsupervised ensemble, both | 0.165 | 0.056 |
+| Supervised Random Forest, local features, trained on steps 1-34, tested on 35-49 | 0.895 | 0.768 |
+
+(Base rate of illicit among labeled transactions: 9.8%.)
+
+- **On real data the ensemble ranks illicit transactions as *more* normal than licit ones.** ROC-AUC 0.17 to 0.33 is well below random: illicit Bitcoin flows sit in the dense, typical region of the feature space, and the statistical outliers are licit (exchanges, large consolidations). The synthetic typologies were planted as structural outliers, which is why the module's premise held there. "Anomalous" and "illicit" are different things.
+- **With labels, the problem is learnable**: the Random Forest reaches F1 0.765 (precision 0.84, recall 0.70), in line with the dataset's published baselines.
+- **And it breaks the moment the world changes.** The forest catches 83% of illicit transactions in steps 35-42, and 1.8% from step 43 on, when a large dark market shut down and illicit behavior changed. A model trained on the past is a model of the past.
+
 # 8. Regulatory disclaimer
 
 This project is a **methodology demonstration**, not a production AML

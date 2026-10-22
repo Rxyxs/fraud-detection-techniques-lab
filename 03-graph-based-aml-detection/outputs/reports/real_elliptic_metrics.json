@@ -1,0 +1,52 @@
+{
+  "dataset": "ellipticco/elliptic-data-set",
+  "n_transactions": 203769,
+  "n_edges": 234355,
+  "n_illicit": 4545,
+  "n_licit": 42019,
+  "illicit_share_of_labeled": 0.0976,
+  "unsupervised_ensemble": {
+    "graph_only": {
+      "roc_auc": 0.3324,
+      "average_precision": 0.0688,
+      "precision_at_base_rate": 0.0152
+    },
+    "local_only": {
+      "roc_auc": 0.1696,
+      "average_precision": 0.0561,
+      "precision_at_base_rate": 0.0
+    },
+    "graph_plus_local": {
+      "roc_auc": 0.1651,
+      "average_precision": 0.0558,
+      "precision_at_base_rate": 0.0
+    }
+  },
+  "supervised_random_forest_temporal": {
+    "roc_auc": 0.8948,
+    "average_precision": 0.7684,
+    "precision": 0.8422,
+    "recall": 0.6999,
+    "f1": 0.7645,
+    "recall_before_shutdown": 0.826,
+    "recall_from_shutdown": 0.0178,
+    "illicit_recall_by_step": {
+      "35": 0.934,
+      "36": 1.0,
+      "37": 0.675,
+      "38": 0.874,
+      "39": 0.852,
+      "40": 0.625,
+      "41": 0.914,
+      "42": 0.766,
+      "43": 0.0,
+      "44": 0.042,
+      "45": 0.0,
+      "46": 0.5,
+      "47": 0.0,
+      "48": 0.0,
+      "49": 0.018
+    }
+  },
+  "elapsed_seconds": 136.9
+}

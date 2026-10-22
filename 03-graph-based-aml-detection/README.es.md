@@ -558,6 +558,24 @@ ensamble.
 
 ---
 
+## 7.7 El mismo ensamble sobre un grafo de transacciones real — Elliptic
+
+`src/realdata_elliptic.py` corre el mismo ensamble no supervisado (IForest + COPOD + ECOD, estandarizados y promediados) y las mismas métricas de grafo (`compute_graph_metrics`, con cada arista de peso 1 porque no se publican montos) sobre el **dataset Elliptic** (Weber et al. 2019, Kaggle `ellipticco/elliptic-data-set`): 203.769 transacciones reales de Bitcoin unidas por 234.355 flujos de pago en 49 pasos de tiempo. 4.545 están etiquetadas como ilícitas (estafas, malware, ransomware, esquemas Ponzi), 42.019 como lícitas y el resto sin etiqueta. Los scores se evalúan solo sobre las transacciones etiquetadas.
+
+| Método | ROC-AUC | Average precision |
+|---|---:|---:|
+| Red sintética, a nivel de cuenta (§7.2) | 0,893 | 0,353 |
+| **Ensamble no supervisado, métricas de grafo** | **0,332** | 0,069 |
+| **Ensamble no supervisado, 93 variables locales de Elliptic** | **0,170** | 0,056 |
+| Ensamble no supervisado, ambas | 0,165 | 0,056 |
+| Random Forest supervisado, variables locales, entrenado en pasos 1-34 y probado en 35-49 | 0,895 | 0,768 |
+
+(Tasa base de ilícitas entre las etiquetadas: 9,8%.)
+
+- **Con datos reales el ensamble ordena las transacciones ilícitas como *más* normales que las lícitas.** Un ROC-AUC de 0,17 a 0,33 está muy por debajo del azar: los flujos ilícitos de Bitcoin están en la zona densa y típica del espacio de variables, y los atípicos estadísticos son lícitos (exchanges, grandes consolidaciones). Las tipologías sintéticas se plantaron como atípicos estructurales, y por eso la premisa del módulo funcionaba ahí. "Anómalo" e "ilícito" no son lo mismo.
+- **Con etiquetas, el problema se puede aprender**: el Random Forest llega a F1 0,765 (precisión 0,84, recall 0,70), en línea con las referencias publicadas del dataset.
+- **Y se rompe en cuanto el mundo cambia.** El bosque atrapa el 83% de las transacciones ilícitas en los pasos 35-42, y el 1,8% desde el paso 43, cuando cerró un gran mercado de la dark web y cambió el comportamiento ilícito. Un modelo entrenado con el pasado es un modelo del pasado.
+
 # 8. Aviso Regulatorio
 
 Este proyecto es una **demostración metodológica**, no un sistema de

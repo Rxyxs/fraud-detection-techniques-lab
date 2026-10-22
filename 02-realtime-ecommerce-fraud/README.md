@@ -13,7 +13,7 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.6x-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![Pytest](https://img.shields.io/badge/tests-33%20passing-brightgreen?style=flat&logo=pytest&logoColor=white)
 ![DuckDB](https://img.shields.io/badge/DuckDB-1.x-FFF000?style=flat&logo=duckdb&logoColor=black)
-![Status](https://img.shields.io/badge/status-research%20%2F%20synthetic%20data-lightgrey?style=flat)
+![Status](https://img.shields.io/badge/data-synthetic%20%2B%20real%20IEEE--CIS%20comparison-lightgrey?style=flat)
 
 An end-to-end fraud-detection system for a Chilean payment processor
 (Transbank/Redcompra-style e-commerce and card transactions): synthetic data
@@ -301,6 +301,22 @@ Animated view of validation loss racing across epochs for each activation:
 ![Deep Learning Loss Curves Animated](outputs/plots/dl_loss_curves_animated.gif)
 ![Deep Learning Loss Curves](outputs/plots/dl_loss_curves.png)
 ![Model Comparison](outputs/plots/model_comparison.png)
+
+## 6.2 The same pipeline on real fraud — IEEE-CIS
+
+Every number above comes from the synthetic generator, whose fraud carries a clean behavioral signature. `src/realdata_ieee.py` runs **every step of `src/models/train.py` unchanged** (behavioral features, legit-only autoencoder, SMOTE+Tomek, cost-weighted CatBoost + XGBoost, CLP-cost threshold tuned on validation, chronological 70/15/15 split) on **IEEE-CIS**: Vesta's real card-not-present e-commerce transactions from the Kaggle competition `ieee-fraud-detection`, 590,540 rows, 3.5% fraud. Customers are approximated by card + billing region, amounts are converted at 650 CLP/USD, and there is no location, so the geo-distance features are constant. For comparison, the same two models are trained on IEEE-CIS's own engineered features.
+
+| Pipeline | PR-AUC | ROC-AUC | Precision | Recall | False alarms (test) | Fraud cost avoided |
+|---|---:|---:|---:|---:|---:|---:|
+| Synthetic data (§6) | 0.993 | 0.9999 | 1.000 | 0.955 | 0 | 98% |
+| **Behavioral features, IEEE-CIS** | **0.052** | 0.592 | 0.047 | 0.448 | 28,220 | 48% |
+| Same models, IEEE-CIS native features | 0.458 | 0.882 | 0.156 | 0.740 | 12,349 | 74% |
+
+(Test split: 88,581 transactions, 3,083 frauds, base rate 3.5%.)
+
+- **The behavioral features carry almost no signal on real fraud.** PR-AUC 0.052 against a 3.5% base rate is a lift of 1.5x, and ROC-AUC 0.59 is close to random. Real card-not-present fraud does not announce itself through a customer's own amount and timing history the way the generator's fraud does.
+- **The cost threshold still does its job.** Even with weak scores, tuning the threshold on CLP cost flags 45% of frauds and avoids 48% of the money at stake. The number of reviews it takes to get there, 28,220 false alarms for 1,380 frauds caught, is what a weak model costs.
+- **What the dataset itself knows is worth ten times more.** The same CatBoost + XGBoost on IEEE-CIS's native features reach PR-AUC 0.458 and avoid 74% of the cost with half the false alarms.
 
 # 7. Repository Structure
 

@@ -5,7 +5,7 @@
 [![tests](https://github.com/Rxyxs/fraud-detection-techniques-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/Rxyxs/fraud-detection-techniques-lab/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
 ![Techniques](https://img.shields.io/badge/techniques-4%20self--contained-8A2BE2)
-![Data](https://img.shields.io/badge/data-2%20real%20datasets%20%2B%202%20synthetic-4479A1)
+![Data](https://img.shields.io/badge/data-4%20real%20datasets%20%2B%202%20synthetic%20with%20real%20comparisons-4479A1)
 ![Languages](https://img.shields.io/badge/languages-Python%20·%20R%20·%20Julia%20·%20Rust%20·%20SQL-000000)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
@@ -24,13 +24,20 @@ Every number below comes from an actual run of that folder's pipeline, not from 
 | **03** | [Graph-based unsupervised AML](03-graph-based-aml-detection) | ROC-AUC **0.893** with **zero labels**, on 43,009 transfers | Precision peaks at a **3% alert budget (51.7%), not 1% (40.0%)** — the very top of the ranking is a handful of extreme outliers, and widening slightly finds more true positives |
 | **04** | [Autoencoder vs. supervised](04-autoencoder-vs-supervised) | Cold-start → mature: PR-AUC **0.318 → 0.834 (2.6x)** | ROC-AUC hides that entirely (0.938 vs 0.965 reads as "almost as good"). The **hybrid added nothing** over plain XGBoost (0.834 vs 0.834) and is reported as the negative result it is |
 
+### What changed on real data
+
+The two synthetic folders now also run on real data, and both of their headline results fall apart there:
+
+- **02 on IEEE-CIS** (590,540 real e-commerce transactions): the same pipeline drops from PR-AUC 0.993 with zero false alarms to **0.052** (base rate 3.5%) with 28,220 false alarms. The same models on IEEE-CIS's own features reach 0.458. See [02 §6.2](02-realtime-ecommerce-fraud#62-the-same-pipeline-on-real-fraud--ieee-cis).
+- **03 on Elliptic** (203,769 real Bitcoin transactions): the unsupervised ensemble scores ROC-AUC **0.17 to 0.33**, below random. Illicit flows are typical, not anomalous. A supervised forest reaches F1 0.765, until a dark market shuts down and its recall falls from 83% to 1.8%. See [03 §7.7](03-graph-based-aml-detection#77-the-same-ensemble-on-a-real-transaction-graph--elliptic).
+
 ### Datasets
 
 | Folder | Data | Size | Fraud rate |
 |---|---|---|---|
 | 01 | Real — Credit Card Fraud 2023 (Kaggle) | 568,629 transactions | balanced by construction |
-| 02 | Synthetic — Chilean e-commerce / Redcompra-style | generated per run | configurable |
-| 03 | Synthetic — Chilean interbank transfer network | 43,009 transfers | unlabeled (UAF typologies as ground truth) |
+| 02 | Synthetic — Chilean e-commerce / Redcompra-style, **plus a real comparison on IEEE-CIS** (Vesta e-commerce) | generated per run; 590,540 real | configurable; 3.5% real |
+| 03 | Synthetic — Chilean interbank transfer network, **plus a real comparison on Elliptic** (Bitcoin transaction graph) | 43,009 transfers; 203,769 real | UAF typologies as ground truth; 4,545 real illicit |
 | 04 | Real — ULB/Worldline European card transactions | 284,807 transactions | 492 frauds (**0.172%**) |
 
 ---
