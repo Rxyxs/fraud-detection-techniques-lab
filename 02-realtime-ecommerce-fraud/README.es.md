@@ -319,6 +319,22 @@ Vista animada de la pérdida de validación avanzando época a época para cada 
 ![Curvas de Pérdida (Deep Learning)](outputs/plots/dl_loss_curves.png)
 ![Comparación de Modelos](outputs/plots/model_comparison.png)
 
+## 6.2 El mismo pipeline sobre fraude real — IEEE-CIS
+
+Todos los números de arriba vienen del generador sintético, cuyo fraude tiene una firma de comportamiento limpia. `src/realdata_ieee.py` corre **cada paso de `src/models/train.py` sin cambios** (atributos de comportamiento, autoencoder entrenado solo con legítimas, SMOTE+Tomek, CatBoost + XGBoost ponderados por costo, umbral por costo en CLP ajustado en validación, split cronológico 70/15/15) sobre **IEEE-CIS**: transacciones reales de e-commerce con tarjeta no presente de Vesta, de la competencia de Kaggle `ieee-fraud-detection`, 590.540 filas, 3,5% de fraude. Los clientes se aproximan por tarjeta + región de facturación, los montos se pasan a 650 CLP/USD, y no hay ubicación, así que los atributos de distancia geográfica quedan constantes. Para comparar, los mismos dos modelos se entrenan sobre las variables propias de IEEE-CIS.
+
+| Pipeline | PR-AUC | ROC-AUC | Precisión | Recall | Falsas alarmas (test) | Costo de fraude evitado |
+|---|---:|---:|---:|---:|---:|---:|
+| Datos sintéticos (§6) | 0,993 | 0,9999 | 1,000 | 0,955 | 0 | 98% |
+| **Atributos de comportamiento, IEEE-CIS** | **0,052** | 0,592 | 0,047 | 0,448 | 28.220 | 48% |
+| Mismos modelos, variables nativas de IEEE-CIS | 0,458 | 0,882 | 0,156 | 0,740 | 12.349 | 74% |
+
+(Split de test: 88.581 transacciones, 3.083 fraudes, tasa base 3,5%.)
+
+- **Los atributos de comportamiento casi no tienen señal sobre fraude real.** Un PR-AUC de 0,052 contra una tasa base de 3,5% es un lift de 1,5 veces, y un ROC-AUC de 0,59 está cerca del azar. El fraude real con tarjeta no presente no se delata por el historial de montos y horarios del propio cliente como el fraude del generador.
+- **El umbral por costo sigue haciendo su trabajo.** Aun con scores débiles, ajustar el umbral por costo en CLP marca el 45% de los fraudes y evita el 48% del dinero en juego. Las revisiones que eso requiere, 28.220 falsas alarmas para 1.380 fraudes atrapados, son lo que cuesta un modelo débil.
+- **Lo que el propio dataset sabe vale diez veces más.** Los mismos CatBoost + XGBoost sobre las variables nativas de IEEE-CIS llegan a PR-AUC 0,458 y evitan el 74% del costo con la mitad de las falsas alarmas.
+
 # 7. Estructura del Repositorio
 
 ```

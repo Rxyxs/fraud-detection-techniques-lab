@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import numpy as np
 import pytest
 
@@ -46,7 +48,9 @@ def test_latest_comparison_orders_by_roc_auc_desc_and_keeps_only_latest_run(con)
     run1 = metrics_store.now()
     metrics_store.persist_metrics(con, "tree_ensemble", "catboost", _fake_metrics(roc_auc=0.5), run_ts=run1)
 
-    run2 = metrics_store.now()
+    # Two calls to now() can return the same instant on Windows' clock, which would merge
+    # the two runs; the second run is placed one second later explicitly.
+    run2 = run1 + timedelta(seconds=1)
     metrics_store.persist_metrics(con, "baseline_interpretable", "logistic_regression", _fake_metrics(roc_auc=0.7), run_ts=run2)
     metrics_store.persist_metrics(con, "deep_learning", "mlp_relu_focal_loss", _fake_metrics(roc_auc=0.95), run_ts=run2)
 

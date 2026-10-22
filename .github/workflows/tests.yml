@@ -9,9 +9,17 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        technique:
+          - 01-credit-card-fraud-multilang
+          - 02-realtime-ecommerce-fraud
+          - 03-graph-based-aml-detection
+          - 04-autoencoder-vs-supervised
     defaults:
       run:
-        working-directory: 01-credit-card-fraud-multilang
+        working-directory: ${{ matrix.technique }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +33,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements.txt
+          pip install -r requirements.txt pytest
+
+      # The API and latency tests in 02 load the trained artifacts, which are not versioned.
+      - name: Train the models the API tests load
+        if: matrix.technique == '02-realtime-ecommerce-fraud'
+        run: python run_pipeline.py
 
       - name: Run test suite
         run: pytest tests/ -q
